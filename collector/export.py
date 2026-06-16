@@ -43,6 +43,34 @@ def to_xlsx(rows: list[dict], path: str) -> None:
     wb.save(path)
 
 
+_KR_TO_KEY = dict(zip(HEADERS_KR, COLUMNS))
+
+
+def load(path: str) -> list[dict]:
+    """이전에 저장한 csv/xlsx 를 다시 행 dict 리스트로 읽는다 (병합용).
+
+    한글 헤더를 내부 키로 되돌린다. 모르는 컬럼/구버전 파일도 최대한 살린다.
+    """
+    rows: list[dict] = []
+    if path.endswith(".csv"):
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            for d in csv.DictReader(f):
+                rows.append({_KR_TO_KEY.get(k, k): (v or "") for k, v in d.items()})
+        return rows
+
+    from openpyxl import load_workbook
+
+    wb = load_workbook(path, read_only=True, data_only=True)
+    ws = wb.active
+    it = ws.iter_rows(values_only=True)
+    headers = next(it, None)
+    if headers:
+        keys = [_KR_TO_KEY.get(h, h) for h in headers]
+        for vals in it:
+            rows.append({k: ("" if v is None else v) for k, v in zip(keys, vals)})
+    return rows
+
+
 def save(rows: list[dict], path: str, fmt: str) -> None:
     if fmt == "csv":
         to_csv(rows, path)

@@ -21,8 +21,9 @@ from datetime import datetime
 from pathlib import Path
 
 from collector.sites import navershop
-from collector.clean import clean_rows, dedup
-from collector.export import save
+from collector.clean import clean_rows, dedup, key_of
+from collector.snowball import candidate_brands
+from collector import export
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_KEYWORDS_FILE = ROOT / "keywords.txt"
@@ -57,6 +58,40 @@ def read_keywords(args) -> list[str]:
     return out
 
 
+def run_searches(keywords, client_id, client_secret, args, searched, label=""):
+    """검색어 목록을 돌며 수집·정제한다. searched 에 사용한 검색어를 기록."""
+    rows: list[dict] = []
+    n = len(keywords)
+    for i, kw in enumerate(keywords, 1):
+        searched.add(kw)
+        try:
+            r = navershop.search(
+                kw, client_id, client_secret,
+                max_items=args.max, sort=args.sort, delay=args.delay,
+            )
+        except Exception as e:  # noqa: BLE001  네트워크/한도 오류는 건너뛰고 계속
+            print(f"  [{label}{i}/{n}] {kw}: 실패 — {e}")
+            continue
+        r = clean_rows(r)  # 브랜드 추출(눈덩이 후보용) + 변형속성 파싱
+        rows.extend(r)
+        print(f"  [{label}{i}/{n}] {kw}: {len(r)}건")
+    return rows
+
+
+def merge_with_previous(current, prev_path):
+    """이전 출력과 병합. 이번에 안 보인 상품은 status=미확인 으로 보존(단종 추적)."""
+    prev = export.load(prev_path)
+    cur_keys = {key_of(r) for r in current}
+    merged = list(current)
+    carried = 0
+    for r in prev:
+        if key_of(r) not in cur_keys:
+            r["status"] = "미확인"  # 이번 수집엔 안 보임 → 단종 후보, last_seen 은 그대로
+            merged.append(r)
+            carried += 1
+    return merged, carried
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="네이버쇼핑 브랜드·상품명 수집기")
     ap.add_argument("--keywords", nargs="*", help="검색어 직접 지정 (없으면 keywords.txt 사용)")
@@ -66,6 +101,14 @@ def main() -> None:
     ap.add_argument("--delay", type=float, default=0.3, help="페이지 호출 간 지연(초)")
     ap.add_argument("--format", default="xlsx", choices=["xlsx", "csv"])
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
+    ap.add_argument("--snowball", type=int, default=0, metavar="N",
+                    help="눈덩이 확장 라운드 수 (수집 결과의 새 브랜드를 검색어로 재투입; 0=끄기)")
+    ap.add_argument("--snowball-min", type=int, default=2,
+                    help="브랜드 재투입 최소 등장 횟수 (잡음 거르기)")
+    ap.add_argument("--snowball-max", type=int, default=50,
+                    help="라운드당 재투입할 최대 브랜드 수 (호출량 가드)")
+    ap.add_argument("--merge", metavar="PREV",
+                    help="이전 출력(csv/xlsx)과 병합해 last_seen·판매상태 갱신")
     args = ap.parse_args()
 
     load_dotenv(ROOT / ".env")
@@ -80,23 +123,26 @@ def main() -> None:
     keywords = read_keywords(args)
     print(f"검색어 {len(keywords)}개로 수집 시작 (검색어당 최대 {args.max}건)\n")
 
-    all_rows: list[dict] = []
-    for i, kw in enumerate(keywords, 1):
-        try:
-            rows = navershop.search(
-                kw, client_id, client_secret,
-                max_items=args.max, sort=args.sort, delay=args.delay,
-            )
-        except Exception as e:  # noqa: BLE001  네트워크/한도 오류는 건너뛰고 계속
-            print(f"  [{i}/{len(keywords)}] {kw}: 실패 — {e}")
-            continue
-        all_rows.extend(rows)
-        print(f"  [{i}/{len(keywords)}] {kw}: {len(rows)}건")
+    searched: set[str] = set()
+    all_rows = run_searches(keywords, client_id, client_secret, args, searched)
 
-    print(f"\n원본 합계 {len(all_rows)}건 → 정제·중복제거 중...")
-    all_rows = clean_rows(all_rows)
-    all_rows = dedup(all_rows)
+    # 눈덩이 확장: 수집된 새 브랜드를 다음 라운드 검색어로 재투입
+    for rnd in range(1, args.snowball + 1):
+        cands = candidate_brands(all_rows, searched, args.snowball_min, args.snowball_max)
+        if not cands:
+            print(f"\n눈덩이 {rnd}라운드: 새 브랜드 없음 — 확장 종료")
+            break
+        preview = ", ".join(cands[:10]) + (" …" if len(cands) > 10 else "")
+        print(f"\n눈덩이 {rnd}라운드: 새 브랜드 {len(cands)}개 재투입 → {preview}")
+        all_rows += run_searches(cands, client_id, client_secret, args, searched, label=f"R{rnd} ")
+
+    print(f"\n원본 합계 {len(all_rows)}건 → 중복제거 중...")
+    all_rows = dedup(all_rows)  # 정제는 run_searches 안에서 이미 끝남
     print(f"중복 제거 후 {len(all_rows)}건")
+
+    if args.merge:
+        all_rows, carried = merge_with_previous(all_rows, args.merge)
+        print(f"이전 파일 병합: 이번에 안 보인 {carried}건은 판매상태=미확인 으로 보존")
 
     if not all_rows:
         sys.exit("수집된 상품이 없습니다.")
@@ -109,7 +155,7 @@ def main() -> None:
         out_path = DEFAULT_OUT_DIR / f"products_{stamp}.{args.format}"
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    save(all_rows, str(out_path), args.format)
+    export.save(all_rows, str(out_path), args.format)
     print(f"\n저장 완료: {out_path}  ({len(all_rows)}건)")
 
 

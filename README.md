@@ -36,10 +36,15 @@ cp .env.example .env
 
 ```bash
 python run.py                          # keywords.txt 전체 → output/products_*.xlsx
-python run.py --keywords 신라면 진라면   # 검색어 직접 지정
+python run.py --keywords 봉지라면 컵라면  # 검색어 직접 지정
 python run.py --format csv --max 300    # CSV로, 검색어당 최대 300건
 python run.py --sort date               # 정렬: sim(유사도)|date|asc|dsc
+python run.py --snowball 1              # 눈덩이 확장: 수집된 새 브랜드를 1라운드 재검색
+python run.py --merge output/이전.xlsx   # 이전 결과와 병합 → 안 보이면 판매상태=미확인
 ```
+
+- `--snowball N`: 카테고리 검색으로 나온 새 브랜드(기본 2회 이상 등장)를 검색어로 재투입해 N라운드 확장. `--snowball-min`(최소 등장수)·`--snowball-max`(라운드당 상한)로 호출량 조절.
+- `--merge PREV`: 이전 출력과 합쳐 `최종확인(last_seen)`을 갱신. 이번 수집에 안 보인 상품은 `판매상태=미확인`으로 남겨 단종을 추적한다.
 
 ## 출력 컬럼
 

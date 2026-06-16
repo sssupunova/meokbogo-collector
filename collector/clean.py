@@ -49,6 +49,11 @@ def _dedup_key(r: dict) -> str:
     return f"name:{r.get('brand', '').lower()}|{r.get('name', '').lower()}"
 
 
+def key_of(r: dict) -> str:
+    """중복/병합 판단용 공개 키 (product_id 우선)."""
+    return _dedup_key(r)
+
+
 def dedup(rows: list[dict]) -> list[dict]:
     """같은 상품 중복 제거. 먼저 등장한 행을 유지한다."""
     seen: set[str] = set()
