@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import csv
 
-# 출력 컬럼 순서 (브랜드·상품명을 앞에)
+# 출력 컬럼 순서 (브랜드·상품명·변형속성을 앞에)
 COLUMNS = [
-    "brand", "name", "price", "mall", "category",
-    "image", "link", "product_id", "source", "keyword", "collected_at",
+    "brand", "name", "volume", "form", "pack", "limited",
+    "price", "mall", "category", "image", "link", "product_id",
+    "status", "source", "keyword", "collected_at", "last_seen",
 ]
 HEADERS_KR = [
-    "브랜드", "상품명", "가격", "판매처", "카테고리",
-    "이미지", "링크", "상품ID", "출처", "검색어", "수집일시",
+    "브랜드", "상품명", "용량/중량", "형태", "입수", "한정",
+    "가격", "판매처", "카테고리", "이미지", "링크", "상품ID",
+    "판매상태", "출처", "검색어", "수집일시", "최종확인",
 ]
 
 

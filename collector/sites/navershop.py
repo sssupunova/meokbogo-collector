@@ -86,6 +86,7 @@ def search(
 
 def _to_row(item: dict, keyword: str) -> dict:
     """네이버 API item → 공통 행 스키마. clean 단계에서 title 태그를 정제한다."""
+    now = _now_iso()
     return {
         "source": SOURCE,
         "keyword": keyword,
@@ -103,5 +104,8 @@ def _to_row(item: dict, keyword: str) -> dict:
         "image": item.get("image", ""),
         "link": item.get("link", ""),
         "product_id": item.get("productId", ""),
-        "collected_at": _now_iso(),
+        "collected_at": now,
+        # 검색 결과에 떴다 = 이번 수집 시점에 시판 중. last_seen 으로 시판여부 추적.
+        "last_seen": now,
+        "status": "판매중",
     }
