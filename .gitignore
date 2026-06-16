@@ -1,0 +1,19 @@
+# 비밀키
+.env
+
+# 출력물
+output/
+*.xlsx
+*.csv
+
+# 파이썬
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.python-version
+
+# OS / 에디터
+.DS_Store
+.idea/
+.vscode/
