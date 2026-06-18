@@ -48,7 +48,7 @@ python run.py --sort date               # 정렬: sim(유사도)|date|asc|dsc
 
 ```bash
 python run.py --brands-csv                         # 기본 kfood 프로파일
-python run.py --profile example_cosmetics --keywords "이니스프리 세럼"
+python run.py --profile health --brands-csv        # 건강기능식품
 python run.py --profile ./my_domain.json --brands-csv
 ```
 
@@ -56,8 +56,12 @@ python run.py --profile ./my_domain.json --brands-csv
 - 프로파일에 적은 키만 기본값(kfood) 위에 덮어쓴다. 다른 도메인 = 프로파일 하나 추가.
 - 주요 키: `brands_csv`, `brand_columns`(CSV 헤더 매핑), `type_filter`, `gen_mode`,
   `seed_filename`, `name_noise`(정제 잡음어), `set_markers`, `composite_min_tokens`,
-  `dedup_noise`, `form_tokens`, `variant_forms`, `limited_words`.
-- 예시: `profiles/example_cosmetics.json` (화장품 도메인으로 바꾸는 법).
+  `dedup_noise`, `form_tokens`, `variant_forms`, `limited_words`,
+  `volume_units`·`pack_units`(용량/입수 단위 — 식품 `g`·`개입` ↔ 건기식 `mg`·`정`·`개월분`).
+- 빌트인 프로파일:
+  - `kfood` — K-Food 가공식품 (기본)
+  - `health` — 건강기능식품 (홍삼·유산균·비타민…, `data/health_brands_db.csv`)
+  - `example_cosmetics` — 화장품 전환 예시(샘플)
 - CLI 플래그(`--type`/`--gen-mode`/`--brands-csv`)는 프로파일 값을 덮어쓴다.
 
 ## 브랜드 기반 검색어 자동생성 (권장)

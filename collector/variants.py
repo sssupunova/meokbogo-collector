@@ -19,39 +19,28 @@ import re
 from collector import config
 
 # ── 용량/중량 ─────────────────────────────────────────────
-# 숫자 + 단위. 첫 매치를 단위 1개분 크기로 본다("120g x 5" → 120g).
-# 단위 뒤 (?![a-wy-z]) : 'g'/'l' 같은 한 글자 단위가 'x'(묶음표시)나 한글 앞에 와도
-# 매치되게 하되, 'gallon' 처럼 다른 영문 단위로 이어지는 경우는 배제한다. ('120gx5' → 120g)
-_VOLUME_RE = re.compile(
-    r"(\d+(?:[.,]\d+)?)\s*(kg|mg|ml|㎏|㎖|g|l|ℓ|리터|그램|키로)(?![a-wy-z])",
-    re.IGNORECASE,
-)
-_UNIT_NORM = {
+# 용량/입수 단위·형태 사전·한정 단어는 config 에서 구성. (도메인마다 단위가 다르다)
+_UNIT_NORM = {  # 표기 정규화(매핑에 없으면 소문자 그대로)
     "kg": "kg", "㎏": "kg", "키로": "kg",
     "g": "g", "그램": "g", "mg": "mg",
     "l": "L", "ℓ": "L", "리터": "L",
     "ml": "ml", "㎖": "ml",
 }
-
-# ── 형태 ──────────────────────────────────────────────────
-# config(variant_forms)에서 구성. 우선순위 순서대로 검사하고 첫 매치를 채택.
-_FORMS: list = []
-
-# ── 입수(묶음 개수) ───────────────────────────────────────
-# "5개입 / 5입 / 5개 / 30봉 / 20포 / 12캔 ..." 와 "x5 / ×20" 패턴.
-_PACK_SUFFIX_RE = re.compile(
-    r"(\d+)\s*(?:개입|입|개들이|개|봉지|봉|포|팩|캔|병|매|스틱|구|ea)\b",
-    re.IGNORECASE,
-)
+_VOLUME_RE = None      # 숫자+용량단위 (그룹 1=양, 2=단위)
+_FORMS: list = []      # 형태 사전
+_PACK_SUFFIX_RE = None  # 숫자+입수단위
 _PACK_X_RE = re.compile(r"[x×*]\s*(\d+)\s*(?:개|입|봉|포|팩|캔|병)?\b", re.IGNORECASE)
-
-# ── 한정/에디션 ───────────────────────────────────────────
-_LIMITED_RE = None  # config(limited_words)에서 구성
+_LIMITED_RE = None     # 한정/에디션
 
 
 def configure(cfg: dict) -> None:
-    """프로파일에서 형태 사전·한정 단어를 (재)구성한다."""
-    global _FORMS, _LIMITED_RE
+    """프로파일에서 용량/입수 단위·형태 사전·한정 단어를 (재)구성한다."""
+    global _VOLUME_RE, _PACK_SUFFIX_RE, _FORMS, _LIMITED_RE
+    vol = "|".join(cfg.get("volume_units", []))
+    # 단위 뒤 (?![a-wy-z]): 'g'/'l' 한 글자 단위가 'x'·한글 앞이어도 매치, 'gallon' 류는 배제
+    _VOLUME_RE = re.compile(rf"(\d+(?:[.,]\d+)?)\s*({vol})(?![a-wy-z])", re.IGNORECASE)
+    pack = "|".join(cfg.get("pack_units", []))
+    _PACK_SUFFIX_RE = re.compile(rf"(\d+)\s*(?:{pack})\b", re.IGNORECASE)
     _FORMS = [(label, tuple(tokens)) for label, tokens in cfg.get("variant_forms", [])]
     words = cfg.get("limited_words", [])
     _LIMITED_RE = re.compile("|".join(re.escape(w) for w in words), re.IGNORECASE) if words \
