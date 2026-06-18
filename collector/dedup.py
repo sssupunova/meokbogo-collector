@@ -25,18 +25,11 @@ from collector import config
 _BRAND_NOISE = re.compile(r"\((?:주|유|사)\)|㈜|주식회사|\b(?:co|inc|ltd|corp)\b\.?", re.IGNORECASE)
 _BRACKET = re.compile(r"[\[(\{][^\])\}]*[\])\}]")  # [..] (..) {..} 안쪽 통째로
 # 용량/중량·입수 토큰 — 별도 키 성분이라 코어 이름에서 제거. (variants.py 와 같은 기준)
+# 용량/입수 단위(_VOL/_PACK)·잡음어(_NOISE_RE)·형태 토큰(_FORM_TOKENS)은 config 에서 구성.
 # 'x 5개입' / '120gx5' 같은 붙은 표기까지 통째로 걷어내도록 순서·경계를 맞춘다.
-_VOL = re.compile(
-    r"\d+(?:[.,]\d+)?\s*(?:kg|mg|ml|㎏|㎖|g|l|ℓ|리터|그램|키로)(?![a-wy-z])",
-    re.IGNORECASE,
-)
-_PACK = re.compile(
-    r"[x×*]?\s*\d+\s*(?:개입|입|개들이|개|봉지|봉|포|팩|캔|병|매|스틱|구|ea)"
-    r"|[x×*]\s*\d+",
-    re.IGNORECASE,
-)
+_VOL = None
+_PACK = None
 _PROMO = re.compile(r"\d\s*\+\s*\d")  # 1+1, 2+1
-# 제품 식별과 무관한 마케팅/배송 잡음(_NOISE_RE)·형태 토큰(_FORM_TOKENS)은 config 에서 구성.
 # (형태/포장 토큰은 '단독 토큰'일 때만 제거 — 포카칩의 '포' 오삭제 방지. 변형 키는
 #  브랜드+제품+용량+입수라 형태는 키에서 빼고 묶는다: 컵/봉지는 보통 용량이 달라 구분됨.)
 _NOISE_RE = None
@@ -46,8 +39,12 @@ _NONWORD = re.compile(r"[^0-9a-z가-힣]+")
 
 
 def configure(cfg: dict) -> None:
-    """프로파일에서 코어 정규화 잡음어·형태 토큰을 (재)구성한다."""
-    global _NOISE_RE, _FORM_TOKENS
+    """프로파일에서 용량/입수 단위·코어 잡음어·형태 토큰을 (재)구성한다."""
+    global _VOL, _PACK, _NOISE_RE, _FORM_TOKENS
+    vol = "|".join(cfg.get("volume_units", []))
+    _VOL = re.compile(rf"\d+(?:[.,]\d+)?\s*(?:{vol})(?![a-wy-z])", re.IGNORECASE)
+    pack = "|".join(cfg.get("pack_units", []))
+    _PACK = re.compile(rf"[x×*]?\s*\d+\s*(?:{pack})|[x×*]\s*\d+", re.IGNORECASE)
     words = cfg.get("dedup_noise", [])
     _NOISE_RE = re.compile("|".join(re.escape(w) for w in words), re.IGNORECASE) if words \
         else re.compile(r"(?!x)x")
