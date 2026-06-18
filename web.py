@@ -164,17 +164,19 @@ def category_picker() -> str:
     return f'<div class="catbox">{blocks}</div>'
 
 
+BRANDSETS = [("kfood", "가공식품 — 라면·과자·음료 등 (약 50개 브랜드)"),
+             ("health", "건강기능식품 — 홍삼·유산균·비타민 등 (약 70개 브랜드)")]
+
+
 def form_body(msg: str = "") -> str:
-    opts = ""
-    for n in list_profiles():
-        desc = _PROFILE_DESC.get(n, "")
-        label = f"{n} — {desc}" if desc else n
-        opts += f'<option value="{html.escape(n)}">{html.escape(label)}</option>'
+    bopts = "".join(
+        f'<option value="{html.escape(v)}">{html.escape(t)}</option>' for v, t in BRANDSETS
+    )
     return f"""
 <div class="hero">
   <h1>상품 데이터, 버튼 한 번으로.</h1>
   <p>네이버쇼핑에서 <b>브랜드·상품명</b>을 모아 중복을 정리하고 엑셀/CSV로 떨궈주는 도구예요.
-  분야를 고르고 시작만 누르면 깔끔한 <b>제품 목록</b>이 만들어집니다.</p>
+  무엇을 모을지 고르고 시작만 누르면 깔끔한 <b>제품 목록</b>이 만들어집니다.</p>
 </div>
 {msg}
 <div class="layout">
@@ -182,26 +184,27 @@ def form_body(msg: str = "") -> str:
 <form method="post" action="/run" onsubmit="document.getElementById('go').disabled=true;document.getElementById('spin').style.display='block';">
 
   <div class="field">
-    <label>어떤 분야를 모을까요?</label>
-    <p class="hint">분야마다 브랜드 목록과 상품명 정리 규칙이 달라요. 카테고리/직접 키워드로 넓게 모으려면 <b>범용</b>.</p>
-    <select name="profile" id="profile">{opts}</select>
-  </div>
-
-  <div class="field">
-    <label>수집 방식</label>
-    <p class="hint" id="srcHint">준비된 브랜드 목록으로 검색어를 자동으로 만들어 한 번에 모아와요. (추천)</p>
+    <label>무엇을 모을까요?</label>
+    <p class="hint" id="srcHint">네이버쇼핑 카테고리를 골라 그 이름으로 모아와요. (가장 넓게)</p>
     <div class="seg">
-      <button type="button" class="on" data-v="brands" onclick="pick(this)">브랜드 목록 자동</button>
-      <button type="button" data-v="category" onclick="pick(this)">카테고리 선택</button>
+      <button type="button" class="on" data-v="category" onclick="pick(this)">카테고리</button>
+      <button type="button" data-v="brandset" onclick="pick(this)">준비된 브랜드셋</button>
       <button type="button" data-v="keywords" onclick="pick(this)">직접 키워드</button>
     </div>
-    <input type="hidden" name="source" id="source" value="brands">
+    <input type="hidden" name="source" id="source" value="category">
   </div>
 
-  <div class="field" id="catBlock" style="display:none">
+  <div class="field" id="catBlock">
     <label>네이버쇼핑 카테고리 고르기</label>
-    <p class="hint">고른 카테고리 이름이 검색어가 돼요. 브랜드 목록 없이도 넓게 둘러볼 때 좋아요.</p>
+    <p class="hint">고른 카테고리 이름이 그대로 검색어가 돼요. 여러 개 선택 가능(결과의 <b>카테고리</b> 칸으로 구분돼요).</p>
     {category_picker()}
+  </div>
+
+  <div class="field" id="bsBlock" style="display:none">
+    <label>준비된 브랜드셋</label>
+    <p class="hint">미리 정리해 둔 브랜드 목록으로 '브랜드 × 카테고리' 검색어를 자동으로 만들어 한 번에 모아요.
+      그 분야에 맞는 상품명 정리 규칙도 자동 적용돼요.</p>
+    <select name="brandset" id="brandset">{bopts}</select>
   </div>
 
   <div class="field" id="kw" style="display:none">
@@ -220,11 +223,11 @@ def form_body(msg: str = "") -> str:
     </div>
   </div>
 
-  <div class="field" id="limitField">
+  <div class="field" id="limitField" style="display:none">
     <label>검색어 개수 제한 <span class="opt">(선택 · 테스트용)</span></label>
-    <p class="hint">'브랜드 목록 자동'은 브랜드×카테고리로 검색어가 <b>수십~수백 개</b> 만들어져요.
-      그게 부담되면 여기서 <b>위에서부터 N개</b>만 쓰도록 줄여요. 비우면 전부 사용.
-      예: <b>5</b> 로 두면 상위 5개 검색어만 돌려 빠르게 결과를 미리 봐요.</p>
+    <p class="hint">브랜드셋은 브랜드×카테고리로 검색어가 <b>수십~수백 개</b> 만들어져요.
+      그게 부담되면 <b>위에서부터 N개</b>만 쓰도록 줄여요. 비우면 전부.
+      예: <b>5</b> → 상위 5개 검색어만 돌려 빠르게 미리보기.</p>
     <input name="limit" type="number" min="1" placeholder="전체 (비워두기)">
   </div>
 
@@ -258,7 +261,7 @@ def form_body(msg: str = "") -> str:
   <div class="item"><b>① 상세</b><span>용량·가격·판매처까지 전부 담긴 원본 표.</span></div>
   <div class="item"><b>② 제품 시드 ⭐</b><span>중복을 정리한 깔끔한 제품 목록. 최종 DB에 바로 쓰는 파일이에요.</span></div>
   <div class="item"><b>③ 복합</b><span>여러 개 묶음·세트 상품을 따로 빼둔 표(나중에 손볼 용도).</span></div>
-  <div class="tip">💡 처음이면 <b>검색어 개수 제한 5</b>로 가볍게 한번 돌려보세요.</div>
+  <div class="tip">💡 정리 규칙(분야)은 고른 항목에 맞춰 <b>자동</b>으로 적용돼요. 따로 안 골라도 돼요.</div>
   <p class="hint" style="margin-top:16px">네이버 API 키(.env)가 설정돼 있어야 동작해요.</p>
 </aside>
 </div>
@@ -268,15 +271,14 @@ function pick(btn){{
   btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   var v=btn.dataset.v; document.getElementById('source').value=v;
-  document.getElementById('kw').style.display      = v==='keywords' ? 'block':'none';
-  document.getElementById('catBlock').style.display= v==='category' ? 'block':'none';
-  document.getElementById('limitField').style.display = v==='brands' ? 'block':'none';
-  var hints={{brands:'준비된 브랜드 목록으로 검색어를 자동으로 만들어 한 번에 모아와요. (추천)',
-    category:'네이버쇼핑 카테고리를 골라 그 이름으로 모아와요. 브랜드 없이 넓게.',
+  document.getElementById('catBlock').style.display   = v==='category' ? 'block':'none';
+  document.getElementById('bsBlock').style.display    = v==='brandset' ? 'block':'none';
+  document.getElementById('kw').style.display         = v==='keywords' ? 'block':'none';
+  document.getElementById('limitField').style.display = v==='brandset' ? 'block':'none';
+  var hints={{category:'네이버쇼핑 카테고리를 골라 그 이름으로 모아와요. (가장 넓게)',
+    brandset:'미리 정리해 둔 브랜드 목록으로 자동 수집해요. 그 분야 정리 규칙도 자동 적용.',
     keywords:'원하는 검색어를 직접 입력해서 모아와요.'}};
   document.getElementById('srcHint').textContent=hints[v];
-  if(v!=='brands'){{ var p=document.getElementById('profile');
-    if(p.querySelector('option[value=general]')) p.value='general'; }}
 }}
 function pickSnow(btn){{
   btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
@@ -357,33 +359,35 @@ class Handler(BaseHTTPRequestHandler):
         def f(k, d=""):
             return (form.get(k) or [d])[0].strip()
 
-        argv = [sys.executable, str(ROOT / "run.py"), "--profile", f("profile", "kfood"),
-                "--max", f("max", "100"), "--format", f("format", "csv")]
-        src = f("source")
+        src = f("source", "category")
         snow = f("snowball")
+        # 정제 규칙(프로파일)은 선택에 따라 자동 결정 — 사용자가 따로 안 고른다.
+        profile = f("brandset", "kfood") if src == "brandset" else "general"
+        argv = [sys.executable, str(ROOT / "run.py"), "--profile", profile,
+                "--max", f("max", "100"), "--format", f("format", "csv")]
 
         def add_snow():
             if snow and snow != "0":
                 argv.extend(["--snowball", snow])
 
-        if src == "keywords":
+        if src == "brandset":
+            argv.append("--brands-csv")
+            if f("limit"):
+                argv += ["--limit", f("limit")]
+            add_snow()
+        elif src == "keywords":
             kws = [k.strip() for k in re.split(r"[\n,]", f("keywords")) if k.strip()]
             if not kws:
                 self._send(page(form_body('<p class="err">키워드를 입력하세요.</p>')))
                 return
             argv += ["--keywords"] + kws
             add_snow()
-        elif src == "category":
+        else:  # category (기본)
             cats = [c.strip() for c in form.get("cat", []) if c.strip()]
             if not cats:
                 self._send(page(form_body('<p class="err">카테고리를 한 개 이상 선택하세요.</p>')))
                 return
             argv += ["--keywords"] + cats
-            add_snow()
-        else:  # brands
-            argv.append("--brands-csv")
-            if f("limit"):
-                argv += ["--limit", f("limit")]
             add_snow()
 
         try:
