@@ -132,3 +132,40 @@ def dedup(rows: list[dict]) -> list[dict]:
         keep["variant_key"] = k
         best[k] = keep
     return [best[k] for k in order]
+
+
+def distill(rows: list[dict]) -> list[dict]:
+    """변형 행들을 '브랜드 + 제품명' 제품 단위로 한 번 더 추린다 (먹보고 시드).
+
+    같은 (brand, product_name) 의 변형(용량/입수)을 한 행으로 모으고,
+    변형 개수·최저가·대표 이미지/링크/카테고리를 담는다. 등장 순서 유지.
+    번들/모음 상품(is_bundle)은 단일 제품이 아니라 시드에서 제외한다.
+    """
+    agg: dict[tuple, dict] = {}
+    order: list[tuple] = []
+    for r in rows:
+        if r.get("is_bundle"):
+            continue
+        brand = (r.get("brand") or "").strip()
+        pname = (r.get("product_name") or "").strip()
+        if not pname:
+            continue
+        key = (brand.lower(), pname.lower())
+        cur = agg.get(key)
+        if cur is None:
+            agg[key] = {
+                "brand": brand,
+                "product_name": pname,
+                "category": r.get("category", ""),
+                "variant_count": 1,
+                "min_price": r.get("price", ""),
+                "image": r.get("image", ""),
+                "link": r.get("link", ""),
+            }
+            order.append(key)
+            continue
+        cur["variant_count"] += 1
+        cur["min_price"] = _min_price({"price": cur["min_price"]}, r)
+        if not cur["category"] and r.get("category"):
+            cur["category"] = r["category"]
+    return [agg[k] for k in order]
