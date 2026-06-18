@@ -28,11 +28,12 @@ from collector.dedup import dedup, distill
 from collector.export import save, save_seed, save_composite
 from collector import keywords_gen
 from collector import state as state_mod
+from collector import config
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_KEYWORDS_FILE = ROOT / "keywords.txt"
-DEFAULT_BRANDS_CSV = ROOT / "data" / "kr_food_brands_db.csv"
 DEFAULT_OUT_DIR = ROOT / "output"
+_BRANDS_CSV_FROM_PROFILE = "\x00profile"  # --brands-csv 를 값 없이 주면 프로파일의 brands_csv 사용
 
 
 def load_dotenv(path: Path) -> None:
@@ -60,30 +61,32 @@ def _read_keywords_file(path: Path) -> list[str]:
     return out
 
 
-def build_keywords(args):
+def build_keywords(args, cfg):
     """검색어 입력원 결정 — 우선순위: --keywords > --brands-csv > keywords.txt.
 
+    type/gen-mode/브랜드CSV 경로는 CLI 플래그가 있으면 그걸, 없으면 프로파일 값을 쓴다.
     반환: (keywords, brand_hints) — brand_hints[검색어]=브랜드 (수집 시 행에 주입).
     """
     if args.keywords:
         return args.keywords, {}
 
     if args.brands_csv:
+        csv_path = cfg["brands_csv"] if args.brands_csv == _BRANDS_CSV_FROM_PROFILE else args.brands_csv
+        type_filter = args.type or cfg["type_filter"]
+        gen_mode = args.gen_mode or cfg["gen_mode"]
         try:
-            brands = keywords_gen.load_brands(args.brands_csv, type_filter=args.type)
+            brands = keywords_gen.load_brands(csv_path, type_filter=type_filter)
         except (FileNotFoundError, ValueError) as e:
             sys.exit(str(e))
-        pairs = keywords_gen.generate_keyword_brands(
-            brands, mode=args.gen_mode, limit=args.limit,
-        )
+        pairs = keywords_gen.generate_keyword_brands(brands, mode=gen_mode, limit=args.limit)
         if not pairs:
-            sys.exit(f"브랜드 CSV 에서 생성된 검색어가 없습니다: {args.brands_csv}")
+            sys.exit(f"브랜드 CSV 에서 생성된 검색어가 없습니다: {csv_path}")
         keywords = [kw for kw, _ in pairs]
         hints = {kw: brand for kw, brand in pairs}
         calls = keywords_gen.estimate_calls(len(keywords), args.max)
         print(
-            f"브랜드 CSV → 검색어 {len(keywords)}개 생성 "
-            f"(type={args.type}, mode={args.gen_mode}"
+            f"[{cfg['name']}] 브랜드 CSV → 검색어 {len(keywords)}개 생성 "
+            f"(type={type_filter}, mode={gen_mode}"
             f"{f', limit={args.limit}' if args.limit else ''})\n"
             f"예상 API 호출 ~{calls}회 (하루 한도 25,000)\n"
         )
@@ -94,20 +97,24 @@ def build_keywords(args):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="네이버쇼핑 브랜드·상품명 수집기")
+    ap.add_argument(
+        "--profile", default="kfood",
+        help="도메인 프로파일 이름(profiles/<name>.json) 또는 경로 (기본 kfood)",
+    )
     ap.add_argument("--keywords", nargs="*", help="검색어 직접 지정 (없으면 keywords.txt 사용)")
     ap.add_argument("--keywords-file", default=str(DEFAULT_KEYWORDS_FILE))
     # 브랜드 CSV → '브랜드 + 카테고리' 검색어 자동생성
     ap.add_argument(
-        "--brands-csv", nargs="?", const=str(DEFAULT_BRANDS_CSV), default=None,
-        help="브랜드 CSV 로 검색어 자동생성 (경로 생략 시 data/kr_food_brands_db.csv)",
+        "--brands-csv", nargs="?", const=_BRANDS_CSV_FROM_PROFILE, default=None,
+        help="브랜드 CSV 로 검색어 자동생성 (경로 생략 시 프로파일의 brands_csv)",
     )
     ap.add_argument(
-        "--type", default="manufacturer", choices=keywords_gen.TYPE_FILTERS,
-        help="브랜드 CSV 선별 (기본 manufacturer=가공식품)",
+        "--type", default=None, choices=keywords_gen.TYPE_FILTERS,
+        help="브랜드 CSV 선별 (생략 시 프로파일 값)",
     )
     ap.add_argument(
-        "--gen-mode", default="brand_x_category", choices=keywords_gen.GEN_MODES,
-        help="검색어 생성 방식 (기본 brand_x_category='농심 라면')",
+        "--gen-mode", default=None, choices=keywords_gen.GEN_MODES,
+        help="검색어 생성 방식 (생략 시 프로파일 값)",
     )
     ap.add_argument("--limit", type=int, default=None, help="생성 검색어 상한 (CSV 순서대로 자름)")
     ap.add_argument(
@@ -130,7 +137,13 @@ def main() -> None:
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
     args = ap.parse_args()
 
-    keywords, brand_hints = build_keywords(args)
+    try:
+        cfg = config.load(args.profile)
+    except (FileNotFoundError, ValueError) as e:
+        sys.exit(str(e))
+    config.use(cfg)  # clean/variants/dedup 패턴을 이 프로파일로 구성
+
+    keywords, brand_hints = build_keywords(args, cfg)
 
     # 검색어 생성만 하고 끝내는 모드 (검수용) — 수집 안 하므로 API 키 불필요
     if args.dump_keywords:
@@ -238,7 +251,7 @@ def main() -> None:
     # 제품 단위 distilled('브랜드 + 제품명') 시드 — 복합(세트/모음) 제외한 단일 제품만.
     # 최종 DB용이라 폴더에서 바로 눈에 띄게 이름을 따로 준다.
     seed_rows = distill(all_rows)
-    seed_path = out_path.with_name(f"먹보고_최종DB시드_{label}{out_path.suffix}")
+    seed_path = out_path.with_name(f"{cfg['seed_filename']}_{label}{out_path.suffix}")
     save_seed(seed_rows, str(seed_path), args.format)
     print(f"저장 완료(★최종 DB 시드): {seed_path}  ({len(seed_rows)}개 제품)")
 

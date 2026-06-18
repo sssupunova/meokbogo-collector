@@ -1,0 +1,27 @@
+{
+  "name": "cosmetics",
+  "description": "화장품 예시 프로파일 — 다른 도메인으로 재사용하는 법을 보여주는 샘플",
+  "brands_csv": "data/cosmetics_brands.csv",
+  "brand_columns": {
+    "company_name": "brand",
+    "subcategory": "category",
+    "brand_name": "brand"
+  },
+  "type_filter": "all",
+  "gen_mode": "brand_x_category",
+  "seed_filename": "화장품_DB시드",
+  "name_noise": [
+    "정품", "무료배송", "사은품", "증정", "기획", "행사", "특가", "본사",
+    "대용량", "리필", "할인", "이벤트", "best", "신상"
+  ],
+  "set_markers": ["세트", "기획세트", "키트", "kit", "구성"],
+  "composite_min_tokens": 6,
+  "variant_forms": [
+    ["스틱", ["스틱", "stick"]],
+    ["펌프", ["펌프"]],
+    ["튜브", ["튜브"]],
+    ["스프레이", ["스프레이", "미스트"]],
+    ["용기", ["용기", "단지"]]
+  ],
+  "limited_words": ["한정", "한정판", "에디션", "edition", "콜라보", "collab", "limited"]
+}

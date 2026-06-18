@@ -28,6 +28,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from collector import config
+
 # CSV 가 카테고리 컬럼(subcategory)을 들고 있으므로 brand_x_category 가 곧 owncat
 # (행 자기 카테고리하고만 곱함 → "농심 김치" 같은 헛검색이 안 생긴다).
 GEN_MODES = ("brand_x_category", "brand_only")
@@ -55,25 +57,32 @@ class Brand:
         return (self.company_name or self.brand_name).strip()
 
 
-def load_brands(csv_path, type_filter: str = "manufacturer") -> list[Brand]:
-    """브랜드 CSV 를 읽어 Brand 리스트로. type_filter 로 manufacturer/franchise/all 선별."""
+def load_brands(csv_path, type_filter: str = "manufacturer", columns: dict | None = None) -> list[Brand]:
+    """브랜드 CSV 를 읽어 Brand 리스트로. type_filter 로 선별, columns 로 헤더명 매핑.
+
+    columns 가 None 이면 활성 프로파일의 brand_columns 를 쓴다(다른 CSV 구조도 매핑만 바꾸면 됨).
+    """
     path = Path(csv_path)
     if not path.exists():
         raise FileNotFoundError(f"브랜드 CSV 가 없습니다: {path}")
     if type_filter not in TYPE_FILTERS:
         raise ValueError(f"알 수 없는 type: {type_filter!r} (가능: {', '.join(TYPE_FILTERS)})")
+    col = columns or config.get().get("brand_columns", {})
+
+    def g(row, field):
+        return (row.get(col.get(field, field)) or "").strip()
 
     brands: list[Brand] = []
     with path.open(encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
             b = Brand(
-                type=(row.get("type") or "").strip(),
-                category=(row.get("category") or "").strip(),
-                subcategory=(row.get("subcategory") or "").strip(),
-                company_name=(row.get("company_name") or "").strip(),
-                company_legal_name=(row.get("company_legal_name") or "").strip(),
-                brand_name=(row.get("brand_name") or "").strip(),
-                note=(row.get("note") or "").strip(),
+                type=g(row, "type"),
+                category=g(row, "category"),
+                subcategory=g(row, "subcategory"),
+                company_name=g(row, "company_name"),
+                company_legal_name=g(row, "company_legal_name"),
+                brand_name=g(row, "brand_name"),
+                note=g(row, "note"),
             )
             if type_filter != "all" and b.type != type_filter:
                 continue

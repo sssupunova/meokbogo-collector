@@ -41,6 +41,25 @@ python run.py --format csv --max 300    # CSV로, 검색어당 최대 300건
 python run.py --sort date               # 정렬: sim(유사도)|date|asc|dsc
 ```
 
+## 프로파일 (다른 키워드·도메인 재사용)
+
+도메인 특화 값(브랜드 CSV·컬럼매핑, 정제 잡음어, 카테고리/형태 사전, 세트 마커,
+시드 파일명)을 **프로파일(JSON) 하나로 분리**했다. 기본은 `kfood`(현재 K-Food 동작).
+
+```bash
+python run.py --brands-csv                         # 기본 kfood 프로파일
+python run.py --profile example_cosmetics --keywords "이니스프리 세럼"
+python run.py --profile ./my_domain.json --brands-csv
+```
+
+- 빌트인 이름은 `profiles/<name>.json`, 또는 파일 경로를 직접 줘도 된다.
+- 프로파일에 적은 키만 기본값(kfood) 위에 덮어쓴다. 다른 도메인 = 프로파일 하나 추가.
+- 주요 키: `brands_csv`, `brand_columns`(CSV 헤더 매핑), `type_filter`, `gen_mode`,
+  `seed_filename`, `name_noise`(정제 잡음어), `set_markers`, `composite_min_tokens`,
+  `dedup_noise`, `form_tokens`, `variant_forms`, `limited_words`.
+- 예시: `profiles/example_cosmetics.json` (화장품 도메인으로 바꾸는 법).
+- CLI 플래그(`--type`/`--gen-mode`/`--brands-csv`)는 프로파일 값을 덮어쓴다.
+
 ## 브랜드 기반 검색어 자동생성 (권장)
 
 ### 왜 '브랜드 + 카테고리' 인가
@@ -151,6 +170,7 @@ python run.py --brands-csv --snowball 2 --snowball-min 5 --snowball-max 30
 
 ```
 collector/
+  config.py            도메인 프로파일(중앙 설정) — 잡음어·사전·CSV매핑·시드명을 한곳에
   sites/navershop.py   마켓 어댑터 (1마켓 1파일 — 쿠팡 등 추가 시 여기에) · 인기순위 캡처
   keywords_gen.py      브랜드 CSV → '브랜드+카테고리' 검색어 자동생성 (눈덩이 확장 공유)
   variants.py          상품명 → 변형속성(용량/형태/입수/한정) 휴리스틱 파싱
@@ -161,6 +181,7 @@ collector/
 run.py                 진입점 (검색어 결정 → 루프 → 정제 → 저장)
 keywords.txt           수집할 검색어 목록 (직접 지정용)
 data/kr_food_brands_db.csv   브랜드 시드 DB (검색어 자동생성 입력)
+profiles/*.json        도메인 프로파일 (kfood 는 빌트인 기본값, example_cosmetics 는 샘플)
 ```
 
 ## 마켓 추가하기
