@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import re
 
+from collector import config
+
 # 브랜드 표기 잡음: (주)/㈜/주식회사/co·inc·ltd
 _BRAND_NOISE = re.compile(r"\((?:주|유|사)\)|㈜|주식회사|\b(?:co|inc|ltd|corp)\b\.?", re.IGNORECASE)
 _BRACKET = re.compile(r"[\[(\{][^\])\}]*[\])\}]")  # [..] (..) {..} 안쪽 통째로
@@ -34,22 +36,22 @@ _PACK = re.compile(
     re.IGNORECASE,
 )
 _PROMO = re.compile(r"\d\s*\+\s*\d")  # 1+1, 2+1
-# 제품 식별과 무관한 마케팅/배송 잡음 (※ 맛·종류 단어는 절대 넣지 않는다)
-_NOISE_WORDS = [
-    "무료배송", "무배", "빠른배송", "당일발송", "당일출고", "오늘출발", "로켓배송",
-    "행사", "특가", "할인", "사은품", "사은", "증정", "정품", "본사직영", "공식판매",
-    "공식", "대용량", "기획", "이벤트", "best", "베스트", "신상", "new", "핫딜",
-    "gift", "set", "멀티팩", "멀티",
-]
-_NOISE_RE = re.compile("|".join(re.escape(w) for w in _NOISE_WORDS), re.IGNORECASE)
-# 형태/포장 토큰: '단독 토큰일 때만' 제거(포카칩의 '포' 같은 오삭제 방지).
-# 변형 키는 브랜드+제품+용량+입수라 형태는 키에서 빼고 묶는다(컵/봉지는 보통 용량이 달라 구분됨).
-_FORM_TOKENS = {
-    "봉지", "봉", "컵", "캔", "병", "팩", "박스", "상자", "스틱", "포", "통",
-    "큰사발", "왕뚜껑", "사발", "묶음", "낱개", "pet", "페트",
-}
+# 제품 식별과 무관한 마케팅/배송 잡음(_NOISE_RE)·형태 토큰(_FORM_TOKENS)은 config 에서 구성.
+# (형태/포장 토큰은 '단독 토큰'일 때만 제거 — 포카칩의 '포' 오삭제 방지. 변형 키는
+#  브랜드+제품+용량+입수라 형태는 키에서 빼고 묶는다: 컵/봉지는 보통 용량이 달라 구분됨.)
+_NOISE_RE = None
+_FORM_TOKENS: set = set()
 _TOKEN_SPLIT = re.compile(r"[^0-9a-z가-힣]+")
 _NONWORD = re.compile(r"[^0-9a-z가-힣]+")
+
+
+def configure(cfg: dict) -> None:
+    """프로파일에서 코어 정규화 잡음어·형태 토큰을 (재)구성한다."""
+    global _NOISE_RE, _FORM_TOKENS
+    words = cfg.get("dedup_noise", [])
+    _NOISE_RE = re.compile("|".join(re.escape(w) for w in words), re.IGNORECASE) if words \
+        else re.compile(r"(?!x)x")
+    _FORM_TOKENS = set(cfg.get("form_tokens", []))
 
 # 백필 대상(대표 행에 비었으면 중복에서 가져옴)
 _BACKFILL = ["volume", "form", "pack_count", "is_limited", "brand",
@@ -169,3 +171,6 @@ def distill(rows: list[dict]) -> list[dict]:
         if not cur["category"] and r.get("category"):
             cur["category"] = r["category"]
     return [agg[k] for k in order]
+
+
+configure(config.DEFAULTS)  # 임포트 시 기본 프로파일로 구성

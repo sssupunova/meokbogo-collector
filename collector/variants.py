@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 
+from collector import config
+
 # ── 용량/중량 ─────────────────────────────────────────────
 # 숫자 + 단위. 첫 매치를 단위 1개분 크기로 본다("120g x 5" → 120g).
 # 단위 뒤 (?![a-wy-z]) : 'g'/'l' 같은 한 글자 단위가 'x'(묶음표시)나 한글 앞에 와도
@@ -32,19 +34,8 @@ _UNIT_NORM = {
 }
 
 # ── 형태 ──────────────────────────────────────────────────
-# 우선순위 순서대로 검사하고 첫 매치를 채택(컵라면이 봉지보다 구체적이므로 앞에).
-_FORMS = [
-    ("컵", ("컵라면", "큰사발", "왕뚜껑", "사발", "컵")),
-    ("캔", ("캔",)),
-    ("병", ("페트", "pet", "병")),
-    ("스틱", ("스틱", "stick")),
-    ("파우치", ("파우치", "스파우트")),
-    ("박스", ("박스", "박스형", "상자", "box")),
-    ("팩", ("멀티팩", "팩")),
-    ("봉지", ("봉지", "봉입", "봉")),
-    ("포", ("포",)),
-    ("통", ("통",)),
-]
+# config(variant_forms)에서 구성. 우선순위 순서대로 검사하고 첫 매치를 채택.
+_FORMS: list = []
 
 # ── 입수(묶음 개수) ───────────────────────────────────────
 # "5개입 / 5입 / 5개 / 30봉 / 20포 / 12캔 ..." 와 "x5 / ×20" 패턴.
@@ -55,10 +46,16 @@ _PACK_SUFFIX_RE = re.compile(
 _PACK_X_RE = re.compile(r"[x×*]\s*(\d+)\s*(?:개|입|봉|포|팩|캔|병)?\b", re.IGNORECASE)
 
 # ── 한정/에디션 ───────────────────────────────────────────
-_LIMITED_RE = re.compile(
-    r"(한정판|한정|에디션|edition|콜라보레이션|콜라보|collab|리미티드|limited)",
-    re.IGNORECASE,
-)
+_LIMITED_RE = None  # config(limited_words)에서 구성
+
+
+def configure(cfg: dict) -> None:
+    """프로파일에서 형태 사전·한정 단어를 (재)구성한다."""
+    global _FORMS, _LIMITED_RE
+    _FORMS = [(label, tuple(tokens)) for label, tokens in cfg.get("variant_forms", [])]
+    words = cfg.get("limited_words", [])
+    _LIMITED_RE = re.compile("|".join(re.escape(w) for w in words), re.IGNORECASE) if words \
+        else re.compile(r"(?!x)x")  # 매치 안 되는 패턴
 
 
 def parse_volume(title: str) -> str:
@@ -103,3 +100,6 @@ def parse_variants(title: str) -> dict:
         "pack_count": parse_pack_count(title),
         "is_limited": parse_limited(title),
     }
+
+
+configure(config.DEFAULTS)  # 임포트 시 기본 프로파일로 구성 (use() 가 나중에 덮음)

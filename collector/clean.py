@@ -13,32 +13,33 @@ import re
 
 from collector.variants import parse_variants
 from collector import dedup as _d  # 제품명 정제에 같은 잡음 패턴 재사용
+from collector import config
 
 _TAG_RE = re.compile(r"</?b>", re.IGNORECASE)
 _SPACE_RE = re.compile(r"\s+")
 _SEP_RE = re.compile(r"[,_/|]+")  # 콤마/슬래시 등 구분자 → 공백
 
-# 제품 식별과 무관한 SEO/포장/잡음어 (판매자가 검색 노출용으로 도배한 단어들).
-# ※ 맛·종류·제품명 단어는 절대 넣지 않는다. 긴 단어 먼저 매치되도록 정렬해서 컴파일.
-_PNAME_NOISE_WORDS = [
-    "봉지라면", "컵라면", "봉지면", "박스라면", "한박스", "업소용", "즉석라면", "매운라면",
-    "끓여먹는라면", "끓여먹는", "간편조리", "간편식", "즉석식품", "자취요리", "비상식량",
-    "혼밥요리", "간단요리", "봉다리라면", "봉다리", "국물라면", "인스턴트", "식자재마트",
-    "식자재", "선물용", "야식", "간식", "캠핑", "혼밥", "자취", "비상", "비축", "사재기",
-    "도매", "대량", "벌크", "박스째", "낱개", "묶음", "박스", "봉지", "한봉지", "면류",
-    "라면류", "먹거리", "다양한", "탕비실", "사무실", "단체", "선물", "각종", "끓이는",
-    "즉석", "ramyeon", "ramen", "품질", "정품", "무료", "행사", "특가", "사은품", "증정",
-    "best", "신상", "핫딜",
-]
-_PNAME_NOISE_RE = re.compile(
-    "|".join(re.escape(w) for w in sorted(_PNAME_NOISE_WORDS, key=len, reverse=True)),
-    re.IGNORECASE,
-)
-# 여러 제품을 묶은 세트/모음/번들 (단일 제품 아님). 1+1 행사는 _PROMO 가 먼저 지워 오검출 방지.
-_SETMARK_RE = re.compile(
-    r"[+＋]|외\s*\d*\s*종|\d+\s*종(?!류|합)|세트|모음|골라\s*담|맛\s*골라|꾸러미|패키지|종합선물"
-)
-_COMPOSITE_MIN_TOKENS = 6  # 정제 후에도 의미 토큰이 이만큼이면 복합으로 본다(안전망)
+# 제품명 정제 SEO/포장 잡음어(_PNAME_NOISE_RE)·세트마커(_SETMARK_RE)·복합 임계치는 config 에서 구성.
+# ※ 맛·종류·제품명 단어는 절대 넣지 말 것. 1+1 행사는 _PROMO 가 먼저 지워 세트 오검출 방지.
+_PNAME_NOISE_RE = None
+_SETMARK_RE = None
+_COMPOSITE_MIN_TOKENS = 6
+
+# 세트 검출의 고정 정규식 부분(특수문자·N종 패턴). config 의 리터럴 마커와 합쳐 컴파일한다.
+_SETMARK_FIXED = r"[+＋]|외\s*\d*\s*종|\d+\s*종(?!류|합)|골라\s*담|맛\s*골라"
+
+
+def configure(cfg: dict) -> None:
+    """프로파일에서 제품명 잡음어·세트마커·복합 임계치를 (재)구성한다."""
+    global _PNAME_NOISE_RE, _SETMARK_RE, _COMPOSITE_MIN_TOKENS
+    words = cfg.get("name_noise", [])
+    _PNAME_NOISE_RE = re.compile(
+        "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True)), re.IGNORECASE
+    ) if words else re.compile(r"(?!x)x")
+    markers = cfg.get("set_markers", [])
+    pat = _SETMARK_FIXED + ("|" + "|".join(re.escape(m) for m in markers) if markers else "")
+    _SETMARK_RE = re.compile(pat)
+    _COMPOSITE_MIN_TOKENS = int(cfg.get("composite_min_tokens", 6))
 
 
 def strip_title(title: str) -> str:
@@ -103,6 +104,9 @@ def is_composite(original_name: str, cleaned_name: str) -> bool:
         return True
     meaningful = [t for t in (cleaned_name or "").split() if len(t) > 1]
     return len(meaningful) >= _COMPOSITE_MIN_TOKENS
+
+
+configure(config.DEFAULTS)  # 임포트 시 기본 프로파일로 구성
 
 
 def clean_rows(rows: list[dict]) -> list[dict]:
