@@ -10,6 +10,8 @@
        python run.py                          # keywords.txt 전체, output/ 에 xlsx 저장
        python run.py --keywords 신라면 진라면   # 검색어 직접 지정
        python run.py --format csv --max 300    # csv, 검색어당 최대 300건
+       python run.py --brands-csv             # data/kr_food_brands_db.csv → '브랜드+카테고리' 검색어 자동생성
+       python run.py --brands-csv --dump-keywords keywords.txt   # 생성만 (검수용, 수집 안 함)
 """
 
 from __future__ import annotations
@@ -23,9 +25,11 @@ from pathlib import Path
 from collector.sites import navershop
 from collector.clean import clean_rows, dedup
 from collector.export import save
+from collector import keywords_gen
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_KEYWORDS_FILE = ROOT / "keywords.txt"
+DEFAULT_BRANDS_CSV = ROOT / "data" / "kr_food_brands_db.csv"
 DEFAULT_OUT_DIR = ROOT / "output"
 
 
@@ -41,10 +45,7 @@ def load_dotenv(path: Path) -> None:
         os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-def read_keywords(args) -> list[str]:
-    if args.keywords:
-        return args.keywords
-    path = Path(args.keywords_file)
+def _read_keywords_file(path: Path) -> list[str]:
     if not path.exists():
         sys.exit(f"검색어 파일이 없습니다: {path}  (--keywords 로 직접 줄 수도 있어요)")
     out = []
@@ -57,16 +58,70 @@ def read_keywords(args) -> list[str]:
     return out
 
 
+def build_keywords(args) -> list[str]:
+    """검색어 입력원 결정 — 우선순위: --keywords > --brands-csv > keywords.txt."""
+    if args.keywords:
+        return args.keywords
+
+    if args.brands_csv:
+        try:
+            brands = keywords_gen.load_brands(args.brands_csv, type_filter=args.type)
+        except (FileNotFoundError, ValueError) as e:
+            sys.exit(str(e))
+        keywords = keywords_gen.generate_keywords(
+            brands, mode=args.gen_mode, limit=args.limit,
+        )
+        if not keywords:
+            sys.exit(f"브랜드 CSV 에서 생성된 검색어가 없습니다: {args.brands_csv}")
+        calls = keywords_gen.estimate_calls(len(keywords), args.max)
+        print(
+            f"브랜드 CSV → 검색어 {len(keywords)}개 생성 "
+            f"(type={args.type}, mode={args.gen_mode}"
+            f"{f', limit={args.limit}' if args.limit else ''})\n"
+            f"예상 API 호출 ~{calls}회 (하루 한도 25,000)\n"
+        )
+        return keywords
+
+    return _read_keywords_file(Path(args.keywords_file))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="네이버쇼핑 브랜드·상품명 수집기")
     ap.add_argument("--keywords", nargs="*", help="검색어 직접 지정 (없으면 keywords.txt 사용)")
     ap.add_argument("--keywords-file", default=str(DEFAULT_KEYWORDS_FILE))
+    # 브랜드 CSV → '브랜드 + 카테고리' 검색어 자동생성
+    ap.add_argument(
+        "--brands-csv", nargs="?", const=str(DEFAULT_BRANDS_CSV), default=None,
+        help="브랜드 CSV 로 검색어 자동생성 (경로 생략 시 data/kr_food_brands_db.csv)",
+    )
+    ap.add_argument(
+        "--type", default="manufacturer", choices=keywords_gen.TYPE_FILTERS,
+        help="브랜드 CSV 선별 (기본 manufacturer=가공식품)",
+    )
+    ap.add_argument(
+        "--gen-mode", default="brand_x_category", choices=keywords_gen.GEN_MODES,
+        help="검색어 생성 방식 (기본 brand_x_category='농심 라면')",
+    )
+    ap.add_argument("--limit", type=int, default=None, help="생성 검색어 상한 (CSV 순서대로 자름)")
+    ap.add_argument(
+        "--dump-keywords", help="생성한 검색어를 파일로만 저장하고 종료 (수집·API키 불필요)",
+    )
     ap.add_argument("--max", type=int, default=1000, help="검색어당 최대 수집 건수 (최대 1000)")
     ap.add_argument("--sort", default="sim", choices=["sim", "date", "asc", "dsc"])
     ap.add_argument("--delay", type=float, default=0.3, help="페이지 호출 간 지연(초)")
     ap.add_argument("--format", default="xlsx", choices=["xlsx", "csv"])
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
     args = ap.parse_args()
+
+    keywords = build_keywords(args)
+
+    # 검색어 생성만 하고 끝내는 모드 (검수용) — 수집 안 하므로 API 키 불필요
+    if args.dump_keywords:
+        out = Path(args.dump_keywords)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text("\n".join(keywords) + "\n", encoding="utf-8")
+        print(f"검색어 {len(keywords)}개 저장: {out}")
+        return
 
     load_dotenv(ROOT / ".env")
     client_id = os.environ.get("NAVER_CLIENT_ID")
@@ -77,7 +132,6 @@ def main() -> None:
             ".env 파일을 만들거나(예: .env.example) 환경변수로 설정하세요."
         )
 
-    keywords = read_keywords(args)
     print(f"검색어 {len(keywords)}개로 수집 시작 (검색어당 최대 {args.max}건)\n")
 
     all_rows: list[dict] = []

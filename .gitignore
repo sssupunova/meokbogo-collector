@@ -6,6 +6,9 @@ output/
 *.xlsx
 *.csv
 
+# 단, 브랜드 시드 CSV 는 입력 데이터라 추적한다
+!data/kr_food_brands_db.csv
+
 # 파이썬
 __pycache__/
 *.py[cod]
