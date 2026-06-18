@@ -25,7 +25,7 @@ from pathlib import Path
 from collector.sites import navershop
 from collector.clean import clean_rows
 from collector.dedup import dedup, distill
-from collector.export import save, save_seed
+from collector.export import save, save_seed, save_composite
 from collector import keywords_gen
 from collector import state as state_mod
 
@@ -234,15 +234,18 @@ def main() -> None:
     save(all_rows, str(out_path), args.format)
     print(f"\n저장 완료(상세 SKU): {out_path}  ({len(all_rows)}건)")
 
-    # 제품 단위 distilled('브랜드 + 제품명') 시드도 함께 저장 (번들 제외)
-    n_bundle = sum(1 for r in all_rows if r.get("is_bundle"))
+    # 제품 단위 distilled('브랜드 + 제품명') 시드 — 복합(세트/모음) 제외한 단일 제품만
     seed_rows = distill(all_rows)
     seed_path = out_path.with_name(f"{out_path.stem}_seed{out_path.suffix}")
     save_seed(seed_rows, str(seed_path), args.format)
-    print(
-        f"저장 완료(브랜드·제품명 시드): {seed_path}  "
-        f"({len(seed_rows)}개 제품, 번들 {n_bundle}건 제외)"
-    )
+    print(f"저장 완료(브랜드·제품명 시드): {seed_path}  ({len(seed_rows)}개 제품)")
+
+    # 복합(세트/모음/도배) 상품은 별도 시트로 격리 — 나중에 재정제
+    comp_rows = [r for r in all_rows if r.get("is_bundle")]
+    if comp_rows:
+        comp_path = out_path.with_name(f"{out_path.stem}_composite{out_path.suffix}")
+        save_composite(comp_rows, str(comp_path), args.format)
+        print(f"저장 완료(복합 상품, 재정제용): {comp_path}  ({len(comp_rows)}건)")
 
 
 if __name__ == "__main__":

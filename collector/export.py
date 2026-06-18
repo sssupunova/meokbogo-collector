@@ -13,7 +13,7 @@ COLUMNS = [
     "is_new", "first_seen", "last_seen", "sale_status", "collected_at",
 ]
 HEADERS_KR = [
-    "브랜드", "제품명", "묶음", "원본상품명",
+    "브랜드", "제품명", "복합", "원본상품명",
     "용량중량", "형태", "입수", "한정",
     "가격", "판매처", "카테고리", "인기순위",
     "이미지", "링크", "상품ID", "출처", "검색어",
@@ -24,6 +24,10 @@ HEADERS_KR = [
 COLUMNS_SEED = ["brand", "product_name", "category", "variant_count",
                 "min_price", "image", "link"]
 HEADERS_SEED = ["브랜드", "제품명", "카테고리", "변형수", "최저가", "대표이미지", "대표링크"]
+
+# 복합(세트/모음/도배) 상품 — 별도 시트로 빼서 나중에 다시 정제하는 용도
+COLUMNS_COMPOSITE = ["brand", "product_name", "name", "category", "price", "mall", "link"]
+HEADERS_COMPOSITE = ["브랜드", "제품명(추정)", "원본상품명", "카테고리", "가격", "판매처", "링크"]
 
 
 def to_csv(rows: list[dict], path: str, columns=COLUMNS, headers=HEADERS_KR) -> None:
@@ -65,3 +69,8 @@ def save(rows: list[dict], path: str, fmt: str,
 def save_seed(seed_rows: list[dict], path: str, fmt: str) -> None:
     """제품 단위 distilled('브랜드 + 제품명') 시드 저장."""
     save(seed_rows, path, fmt, COLUMNS_SEED, HEADERS_SEED)
+
+
+def save_composite(rows: list[dict], path: str, fmt: str) -> None:
+    """복합(세트/모음) 상품을 원본상품명과 함께 저장 (재정제용)."""
+    save(rows, path, fmt, COLUMNS_COMPOSITE, HEADERS_COMPOSITE)
