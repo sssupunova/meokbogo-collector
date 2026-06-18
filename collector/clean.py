@@ -1,5 +1,6 @@
 """
-수집 결과 정제: 상품명 태그 제거 + 브랜드 보정 + 중복 제거.
+수집 결과 정제: 상품명 태그 제거 + 브랜드 보정 + 변형속성 파싱.
+(변형 단위 중복 제거는 collector/dedup.py 가 담당.)
 
 먹보고 DB에 넣기 전 '브랜드 + 상품명'을 사람이 보기 좋은 형태로 1차 정리하는 단계.
 무거운 정규화(패밀리/폼/카테고리 5버킷)는 먹보고 앱 쪽 파이프라인에서 하므로 여기선 가볍게.
@@ -40,24 +41,3 @@ def clean_rows(rows: list[dict]) -> list[dict]:
             r["brand"] = guess_brand(r["name"])
         r.update(parse_variants(r["name"]))
     return rows
-
-
-def _dedup_key(r: dict) -> str:
-    """중복 판단 키: product_id 우선, 없으면 브랜드+상품명 소문자."""
-    pid = (r.get("product_id") or "").strip()
-    if pid:
-        return f"pid:{pid}"
-    return f"name:{r.get('brand', '').lower()}|{r.get('name', '').lower()}"
-
-
-def dedup(rows: list[dict]) -> list[dict]:
-    """같은 상품 중복 제거. 먼저 등장한 행을 유지한다."""
-    seen: set[str] = set()
-    out: list[dict] = []
-    for r in rows:
-        key = _dedup_key(r)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(r)
-    return out

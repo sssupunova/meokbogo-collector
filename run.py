@@ -23,7 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from collector.sites import navershop
-from collector.clean import clean_rows, dedup
+from collector.clean import clean_rows
+from collector.dedup import dedup
 from collector.export import save
 from collector import keywords_gen
 from collector import state as state_mod
@@ -115,6 +116,10 @@ def main() -> None:
     ap.add_argument(
         "--state", help="시판여부 추적 상태파일(JSON). 실행 간 first/last_seen·신규·미확인 비교",
     )
+    # 눈덩이(snowball) 확장: 수집 결과의 새 브랜드를 검색어로 재투입
+    ap.add_argument("--snowball", type=int, default=0, metavar="N", help="눈덩이 확장 회차(0=off)")
+    ap.add_argument("--snowball-min", type=int, default=3, help="새 브랜드 채택 최소 등장 횟수")
+    ap.add_argument("--snowball-max", type=int, default=50, help="회차당 새 브랜드 상한")
     ap.add_argument("--delay", type=float, default=0.3, help="페이지 호출 간 지연(초)")
     ap.add_argument("--format", default="xlsx", choices=["xlsx", "csv"])
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
@@ -141,21 +146,56 @@ def main() -> None:
 
     print(f"검색어 {len(keywords)}개로 수집 시작 (검색어당 최대 {args.max}건)\n")
 
-    all_rows: list[dict] = []
-    for i, kw in enumerate(keywords, 1):
-        try:
-            rows = navershop.search(
-                kw, client_id, client_secret,
-                max_items=args.max, sort=args.sort, delay=args.delay,
-            )
-        except Exception as e:  # noqa: BLE001  네트워크/한도 오류는 건너뛰고 계속
-            print(f"  [{i}/{len(keywords)}] {kw}: 실패 — {e}")
-            continue
-        all_rows.extend(rows)
-        print(f"  [{i}/{len(keywords)}] {kw}: {len(rows)}건")
+    searched: set[str] = set()
 
-    print(f"\n원본 합계 {len(all_rows)}건 → 정제·중복제거 중...")
-    all_rows = clean_rows(all_rows)
+    def collect(kw_list: list[str]) -> list[dict]:
+        """검색어 리스트를 수집해 정제까지 마친 행 리스트를 돌려준다(이미 검색한 건 건너뜀)."""
+        rows: list[dict] = []
+        todo = [k for k in kw_list if k not in searched]
+        for i, kw in enumerate(todo, 1):
+            searched.add(kw)
+            try:
+                r = navershop.search(
+                    kw, client_id, client_secret,
+                    max_items=args.max, sort=args.sort, delay=args.delay,
+                )
+            except Exception as e:  # noqa: BLE001  네트워크/한도 오류는 건너뛰고 계속
+                print(f"  [{i}/{len(todo)}] {kw}: 실패 — {e}")
+                continue
+            rows.extend(r)
+            print(f"  [{i}/{len(todo)}] {kw}: {len(r)}건")
+        return clean_rows(rows)
+
+    all_rows: list[dict] = []
+    new_rows = collect(keywords)
+    all_rows.extend(new_rows)
+
+    # 눈덩이 확장: 직전 결과의 '새 브랜드'를 brand_only 검색어로 재투입 (반복)
+    if args.snowball:
+        # 시드 브랜드(이미 검색축으로 쓴 것)는 새 브랜드에서 제외
+        known_brands: set[str] = set()
+        if args.brands_csv:
+            try:
+                seeds = keywords_gen.load_brands(args.brands_csv, type_filter=args.type)
+                known_brands = {b.search_brand.lower() for b in seeds}
+            except (FileNotFoundError, ValueError):
+                pass
+        for rnd in range(1, args.snowball + 1):
+            new_brands = keywords_gen.discover_brands(
+                new_rows, known_brands,
+                min_count=args.snowball_min, limit=args.snowball_max,
+            )
+            if not new_brands:
+                print(f"눈덩이 {rnd}회차: 새 브랜드 없음 — 종료")
+                break
+            for b in new_brands:
+                known_brands.add(b.lower())
+            kw2 = keywords_gen.generate_keywords([], mode="brand_only", extra_brands=new_brands)
+            print(f"\n눈덩이 {rnd}/{args.snowball}회차: 새 브랜드 {len(new_brands)}개 재투입")
+            new_rows = collect(kw2)
+            all_rows.extend(new_rows)
+
+    print(f"\n원본 합계 {len(all_rows)}건 → 변형 단위 중복제거 중...")
     all_rows = dedup(all_rows)
     print(f"중복 제거 후 {len(all_rows)}건")
 
