@@ -30,7 +30,7 @@ cp .env.example .env
 # .env 를 열어 NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 채우기
 ```
 
-3. `keywords.txt` 에 수집할 검색어를 한 줄에 하나씩 (브랜드/제품명을 섞을수록 커버리지가 넓다)
+3. `keywords.txt` 에 수집할 검색어를 한 줄에 하나씩 (또는 아래 '브랜드 기반 검색어 자동생성' 사용)
 
 ## 실행
 
@@ -41,6 +41,36 @@ python run.py --format csv --max 300    # CSV로, 검색어당 최대 300건
 python run.py --sort date               # 정렬: sim(유사도)|date|asc|dsc
 ```
 
+## 브랜드 기반 검색어 자동생성 (권장)
+
+### 왜 '브랜드 + 카테고리' 인가
+이 수집기는 **주요 제품 커버가 안 되는 식약처 DB를 보완**하려는 것이다. 그래서
+검색어를 **제품명**으로 시딩하면 순환논리가 된다 — 식약처가 빠뜨린 제품은 제품명
+목록에도 없기 때문이다. 대신 검색 단위를 **'브랜드 + 카테고리'** 로 올린다. 브랜드는
+유한하고 식약처와 독립된 축이라, `"농심 라면"` 으로 인기순 검색하면 그 브랜드의 실제
+주력 제품(식약처가 빠뜨린 것 포함)이 나온다.
+
+### 사용
+`data/kr_food_brands_db.csv`(브랜드 시드) 를 읽어 검색어를 자동 생성한다.
+
+```bash
+python run.py --brands-csv                       # CSV → '브랜드+카테고리' 검색어 자동생성 후 수집
+python run.py --brands-csv --gen-mode brand_only # "농심" 처럼 브랜드만 (호출 적고 넓게)
+python run.py --brands-csv --type all            # 가공식품 + 프랜차이즈 (기본은 manufacturer)
+python run.py --brands-csv --limit 30            # 상위 30개 검색어만 (CSV 순서 = 매출·순위)
+python run.py --brands-csv --dump-keywords keywords.txt  # 생성만 (검수용, 수집·API키 불필요)
+```
+
+| 옵션 | 기본값 | 설명 |
+|---|---|---|
+| `--gen-mode` | `brand_x_category` | `brand_x_category`("농심 라면") / `brand_only`("농심") |
+| `--type` | `manufacturer` | `manufacturer`(가공식품) / `franchise` / `all` |
+| `--limit` | 없음 | 생성 검색어 상한 (호출 예산 관리) |
+
+> CSV 의 `subcategory` 를 카테고리 축으로 쓰므로 "농심 김치" 같은 헛검색이 생기지 않는다
+> (브랜드 × 자기 카테고리만 곱함). manufacturer 의 `brand_name` 은 사실 제품명이라
+> 검색어로 쓰지 않고, 검색축은 회사명(`company_name`)을 쓴다.
+
 ## 출력 컬럼
 
 `브랜드 | 상품명 | 가격 | 판매처 | 카테고리 | 이미지 | 링크 | 상품ID | 출처 | 검색어 | 수집일시`
@@ -50,10 +80,12 @@ python run.py --sort date               # 정렬: sim(유사도)|date|asc|dsc
 ```
 collector/
   sites/navershop.py   마켓 어댑터 (1마켓 1파일 — 쿠팡 등 추가 시 여기에)
+  keywords_gen.py      브랜드 CSV → '브랜드+카테고리' 검색어 자동생성 (눈덩이 확장 공유)
   clean.py             상품명 태그 제거 · 브랜드 보정 · 중복 제거
   export.py            xlsx / csv 저장
-run.py                 진입점 (검색어 루프 → 정제 → 저장)
-keywords.txt           수집할 검색어 목록
+run.py                 진입점 (검색어 결정 → 루프 → 정제 → 저장)
+keywords.txt           수집할 검색어 목록 (직접 지정용)
+data/kr_food_brands_db.csv   브랜드 시드 DB (검색어 자동생성 입력)
 ```
 
 ## 마켓 추가하기
