@@ -43,54 +43,69 @@ def page(body: str) -> bytes:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
   :root{{--blue:#3182f6;--blue-d:#1b64da;--bg:#f2f4f6;--card:#fff;--text:#191f28;
-    --sub:#8b95a1;--field:#f2f4f6;--line:#e5e8eb;--green:#03c75a}}
+    --sub:#6b7684;--field:#f2f4f6;--line:#e5e8eb;--green:#03c75a}}
   *{{box-sizing:border-box}}
+  html{{font-size:18px}}
   body{{margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
     font-family:'Pretendard','Apple SD Gothic Neo',-apple-system,BlinkMacSystemFont,sans-serif;
     letter-spacing:-0.2px}}
-  .wrap{{max-width:560px;margin:0 auto;padding:48px 20px 96px}}
-  .brand{{display:flex;align-items:center;gap:11px;margin-bottom:10px}}
-  .logo{{width:34px;height:34px;border-radius:10px;background:var(--green);color:#fff;
-    font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center}}
-  h1{{font-size:27px;font-weight:800;margin:0;letter-spacing:-0.7px}}
-  .sub{{color:var(--sub);font-size:15px;margin:8px 0 30px;line-height:1.55}}
-  .card{{background:var(--card);border-radius:22px;padding:30px 26px;
-    box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(20,30,55,.06)}}
-  .field{{margin-bottom:24px}} .field:last-of-type{{margin-bottom:8px}}
-  .field>label{{display:block;font-size:15.5px;font-weight:700;margin-bottom:6px}}
-  .hint{{color:var(--sub);font-size:13px;margin:0 0 11px;line-height:1.5}}
-  select,input,textarea{{width:100%;padding:14px;background:var(--field);border:1.5px solid transparent;
-    border-radius:14px;font-size:15px;color:var(--text);font-family:inherit;outline:none;
+  .topbar{{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.82);
+    backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}}
+  .topbar .inner{{max-width:1000px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:12px}}
+  .topbar h2{{font-size:20px;font-weight:800;margin:0}}
+  .logo{{width:36px;height:36px;border-radius:11px;background:var(--green);color:#fff;
+    font-weight:800;font-size:21px;display:flex;align-items:center;justify-content:center}}
+  .wrap{{max-width:1000px;margin:0 auto;padding:48px 28px 110px}}
+  .hero h1{{font-size:40px;font-weight:800;margin:0 0 14px;letter-spacing:-1.2px;line-height:1.2}}
+  .hero p{{font-size:19px;color:var(--sub);margin:0 0 36px;line-height:1.65;max-width:720px}}
+  .layout{{display:grid;grid-template-columns:1.55fr 1fr;gap:26px;align-items:start}}
+  .card{{background:var(--card);border-radius:26px;padding:38px 40px;
+    box-shadow:0 1px 2px rgba(0,0,0,.04),0 14px 36px rgba(20,30,55,.07)}}
+  .field{{margin-bottom:28px}} .field:last-of-type{{margin-bottom:10px}}
+  .field>label{{display:block;font-size:18px;font-weight:700;margin-bottom:7px}}
+  .field>label .opt{{color:var(--sub);font-weight:500;font-size:15px}}
+  .hint{{color:var(--sub);font-size:15.5px;margin:0 0 13px;line-height:1.55}}
+  select,input,textarea{{width:100%;padding:16px 17px;background:var(--field);border:1.5px solid transparent;
+    border-radius:15px;font-size:17px;color:var(--text);font-family:inherit;outline:none;
     transition:border-color .15s,background .15s,box-shadow .15s;-webkit-appearance:none}}
-  textarea{{resize:vertical;line-height:1.5}}
+  textarea{{resize:vertical;line-height:1.55}}
   select:focus,input:focus,textarea:focus{{border-color:var(--blue);background:#fff;
-    box-shadow:0 0 0 4px rgba(49,130,246,.12)}}
-  .grid{{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
-  .seg{{display:flex;background:var(--field);border-radius:14px;padding:5px;gap:5px}}
-  .seg button{{flex:1;border:0;background:transparent;padding:12px;border-radius:11px;
-    font-size:14.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:.15s}}
-  .seg button.on{{background:#fff;color:var(--blue);box-shadow:0 1px 4px rgba(20,30,55,.12)}}
-  .submit{{width:100%;padding:17px;background:var(--blue);color:#fff;border:0;border-radius:16px;
-    font-size:16.5px;font-weight:800;cursor:pointer;transition:.15s;margin-top:4px}}
+    box-shadow:0 0 0 4px rgba(49,130,246,.13)}}
+  .grid2{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
+  .seg{{display:flex;background:var(--field);border-radius:15px;padding:5px;gap:5px}}
+  .seg button{{flex:1;border:0;background:transparent;padding:14px;border-radius:12px;
+    font-size:16.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:.15s}}
+  .seg button.on{{background:#fff;color:var(--blue);box-shadow:0 1px 5px rgba(20,30,55,.13)}}
+  .submit{{width:100%;padding:19px;background:var(--blue);color:#fff;border:0;border-radius:17px;
+    font-size:19px;font-weight:800;cursor:pointer;transition:.15s;margin-top:6px}}
   .submit:hover{{background:var(--blue-d)}} .submit:active{{transform:scale(.99)}}
   .submit:disabled{{background:#c6d6f5;cursor:default}}
-  .spin{{display:none;text-align:center;color:var(--blue);font-weight:700;margin-top:18px;font-size:14px}}
-  .note{{margin-top:22px;font-size:13px;color:var(--sub);line-height:1.7}}
-  .note b{{color:var(--text)}}
-  .chips{{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 4px}}
-  .chips a{{display:flex;flex-direction:column;gap:2px;padding:14px 16px;background:var(--field);
-    border-radius:14px;text-decoration:none;color:var(--text);font-weight:700;font-size:14.5px;
-    transition:.15s;flex:1;min-width:150px}}
+  .spin{{display:none;text-align:center;color:var(--blue);font-weight:700;margin-top:20px;font-size:16px}}
+  .aside h3{{font-size:19px;font-weight:800;margin:0 0 16px}}
+  .aside .item{{margin-bottom:18px}}
+  .aside .item b{{display:block;font-size:16.5px;margin-bottom:3px}}
+  .aside .item span{{color:var(--sub);font-size:15px;line-height:1.55}}
+  .aside .tip{{margin-top:6px;padding:16px;background:#eef4ff;border-radius:14px;
+    color:#1b4fb0;font-size:15px;line-height:1.6;font-weight:600}}
+  .chips{{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0}}
+  .chips a{{display:flex;flex-direction:column;gap:3px;padding:18px 20px;background:var(--field);
+    border-radius:16px;text-decoration:none;color:var(--text);font-weight:700;font-size:17px;
+    transition:.15s;flex:1;min-width:180px}}
   .chips a:hover{{background:#e8eef9}}
   .chips a.seed{{background:var(--blue);color:#fff}} .chips a.seed:hover{{background:var(--blue-d)}}
-  .chips small{{font-weight:600;opacity:.7;font-size:12px}}
-  .status{{font-size:21px;font-weight:800;margin:0 0 4px}}
-  details{{margin-top:18px}} summary{{cursor:pointer;color:var(--sub);font-size:14px;font-weight:600}}
-  pre{{background:#0f1115;color:#cdd3de;padding:16px;border-radius:14px;overflow:auto;
-    font-size:12px;line-height:1.55;max-height:340px;margin-top:12px}}
+  .chips small{{font-weight:600;opacity:.75;font-size:14px}}
+  .status{{font-size:26px;font-weight:800;margin:0 0 6px}}
+  details{{margin-top:20px}} summary{{cursor:pointer;color:var(--sub);font-size:15.5px;font-weight:600}}
+  pre{{background:#0f1115;color:#cdd3de;padding:18px;border-radius:15px;overflow:auto;
+    font-size:13.5px;line-height:1.6;max-height:360px;margin-top:14px}}
   .err{{color:#e0264b}}
-  a.back{{display:inline-block;margin-top:22px;color:var(--blue);font-weight:700;text-decoration:none}}
-</style></head><body><div class="wrap">{body}</div></body></html>""".encode("utf-8")
+  a.back{{display:inline-block;margin-top:24px;color:var(--blue);font-weight:700;
+    text-decoration:none;font-size:16.5px}}
+  @media(max-width:820px){{.layout{{grid-template-columns:1fr}} .hero h1{{font-size:32px}}}}
+  @media(max-width:520px){{.grid2{{grid-template-columns:1fr}} .card{{padding:28px 22px}}}}
+</style></head><body>
+<div class="topbar"><div class="inner"><div class="logo">N</div><h2>네이버쇼핑 수집기</h2></div></div>
+<div class="wrap">{body}</div></body></html>""".encode("utf-8")
 
 
 _PROFILE_DESC = {
@@ -107,10 +122,13 @@ def form_body(msg: str = "") -> str:
         label = f"{n} — {desc}" if desc else n
         opts += f'<option value="{html.escape(n)}">{html.escape(label)}</option>'
     return f"""
-<div class="brand"><div class="logo">N</div><h1>네이버쇼핑 수집기</h1></div>
-<p class="sub">네이버쇼핑에서 <b>브랜드·상품명</b>을 모아 엑셀/CSV로 정리해 주는 도구예요.
-분야를 고르고 버튼만 누르면, 중복을 정리한 <b>제품 목록</b>이 만들어집니다.</p>
+<div class="hero">
+  <h1>상품 데이터, 버튼 한 번으로.</h1>
+  <p>네이버쇼핑에서 <b>브랜드·상품명</b>을 모아 중복을 정리하고 엑셀/CSV로 떨궈주는 도구예요.
+  분야를 고르고 시작만 누르면 깔끔한 <b>제품 목록</b>이 만들어집니다.</p>
+</div>
 {msg}
+<div class="layout">
 <div class="card">
 <form method="post" action="/run" onsubmit="document.getElementById('go').disabled=true;document.getElementById('spin').style.display='block';">
 
@@ -136,29 +154,30 @@ def form_body(msg: str = "") -> str:
     <textarea name="keywords" rows="3" placeholder="농심 라면&#10;오뚜기 라면"></textarea>
   </div>
 
-  <div class="field">
-    <label>검색어당 최대 개수</label>
-    <p class="hint">검색어 하나에서 몇 개까지 가져올지예요. 많을수록 더 많이 모으지만 오래 걸려요. (최대 1000)</p>
-    <input name="max" type="number" value="100" min="10" max="1000">
+  <div class="grid2">
+    <div class="field">
+      <label>검색어당 최대 개수</label>
+      <p class="hint">검색어 하나에서 몇 개까지. 많을수록 오래 걸려요. (최대 1000)</p>
+      <input name="max" type="number" value="100" min="10" max="1000">
+    </div>
+    <div class="field">
+      <label>검색어 개수 제한 <span class="opt">(선택)</span></label>
+      <p class="hint">자동 생성 검색어를 위에서부터 잘라요. 비우면 전부. (테스트 5~10)</p>
+      <input name="limit" type="number" min="1" placeholder="전체">
+    </div>
   </div>
 
-  <div class="field">
-    <label>검색어 개수 제한 <span style="color:var(--sub);font-weight:500">(선택)</span></label>
-    <p class="hint">자동으로 만들어지는 검색어 개수를 위에서부터 잘라요. 비워두면 전부 사용. (가볍게 테스트할 때 5~10)</p>
-    <input name="limit" type="number" min="1" placeholder="전체 (비워두기)">
-  </div>
-
-  <div class="field">
-    <label>눈덩이 확장 <span style="color:var(--sub);font-weight:500">(선택, 기본 0)</span></label>
-    <p class="hint">모은 결과에서 <b>새로 발견된 브랜드</b>를 다시 검색어로 넣어 더 넓게 긁어와요.
-      눈사람 굴리듯 점점 커진다고 눈덩이예요. 0이면 안 함, 1~2면 충분.</p>
-    <input name="snowball" type="number" value="0" min="0" max="5">
-  </div>
-
-  <div class="field">
-    <label>저장 형식</label>
-    <p class="hint">csv는 엑셀·구글시트에서 바로 열려요. xlsx는 엑셀 전용 파일이에요.</p>
-    <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
+  <div class="grid2">
+    <div class="field">
+      <label>눈덩이 확장 <span class="opt">(기본 0)</span></label>
+      <p class="hint">새로 발견된 브랜드를 다시 검색어로 넣어 더 넓게. 0=안 함, 1~2면 충분.</p>
+      <input name="snowball" type="number" value="0" min="0" max="5">
+    </div>
+    <div class="field">
+      <label>저장 형식</label>
+      <p class="hint">CSV는 엑셀·구글시트에서 바로 열려요.</p>
+      <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
+    </div>
   </div>
 
   <button id="go" class="submit" type="submit">수집 시작하기</button>
@@ -166,9 +185,15 @@ def form_body(msg: str = "") -> str:
 </form>
 </div>
 
-<p class="note">실행하면 파일 <b>3개</b>가 만들어져요 —
-<b>① 상세</b>(용량·가격까지 전부) · <b>② 제품 시드</b>(중복 없이 깔끔한 최종 DB용) ·
-<b>③ 복합</b>(여러 개 묶음·세트 상품, 따로 빼둠). 네이버 API 키(.env)가 필요해요.</p>
+<aside class="card aside">
+  <h3>이렇게 나와요</h3>
+  <div class="item"><b>① 상세</b><span>용량·가격·판매처까지 전부 담긴 원본 표.</span></div>
+  <div class="item"><b>② 제품 시드 ⭐</b><span>중복을 정리한 깔끔한 제품 목록. 최종 DB에 바로 쓰는 파일이에요.</span></div>
+  <div class="item"><b>③ 복합</b><span>여러 개 묶음·세트 상품을 따로 빼둔 표(나중에 손볼 용도).</span></div>
+  <div class="tip">💡 처음이면 <b>분야</b>만 고르고 <b>검색어 개수 제한 5</b>로 가볍게 한번 돌려보세요.</div>
+  <p class="hint" style="margin-top:16px">네이버 API 키(.env)가 설정돼 있어야 동작해요.</p>
+</aside>
+</div>
 
 <script>
 function pick(btn){{
@@ -198,7 +223,7 @@ def result_body(returncode: int, log: str, files: list[tuple[str, str, str]]) ->
     hint = ('<p class="hint">아래에서 파일을 내려받으세요. <b>제품 시드</b>가 최종 DB용이에요.</p>'
             if ok else '<p class="hint">아래 로그에서 원인을 확인하세요 (보통 API 키 누락·검색어 없음).</p>')
     return f"""
-<div class="brand"><div class="logo">N</div><h1>네이버쇼핑 수집기</h1></div>
+<div class="hero"><h1>수집 결과</h1></div>
 <div class="card">
   {status}
   {hint}
