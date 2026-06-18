@@ -45,48 +45,48 @@ def page(body: str) -> bytes:
   :root{{--blue:#3182f6;--blue-d:#1b64da;--bg:#f2f4f6;--card:#fff;--text:#191f28;
     --sub:#6b7684;--field:#f2f4f6;--line:#e5e8eb;--green:#03c75a}}
   *{{box-sizing:border-box}}
-  html{{font-size:18px}}
+  html{{font-size:20px}}
   body{{margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
     font-family:'Pretendard','Apple SD Gothic Neo',-apple-system,BlinkMacSystemFont,sans-serif;
     letter-spacing:-0.2px}}
   .topbar{{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.82);
     backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}}
-  .topbar .inner{{max-width:1000px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;gap:12px}}
-  .topbar h2{{font-size:20px;font-weight:800;margin:0}}
+  .topbar .inner{{max-width:1240px;margin:0 auto;padding:18px 32px;display:flex;align-items:center;gap:13px}}
+  .topbar h2{{font-size:23px;font-weight:800;margin:0}}
   .logo{{width:36px;height:36px;border-radius:11px;background:var(--green);color:#fff;
     font-weight:800;font-size:21px;display:flex;align-items:center;justify-content:center}}
-  .wrap{{max-width:1000px;margin:0 auto;padding:48px 28px 110px}}
-  .hero h1{{font-size:40px;font-weight:800;margin:0 0 14px;letter-spacing:-1.2px;line-height:1.2}}
-  .hero p{{font-size:19px;color:var(--sub);margin:0 0 36px;line-height:1.65;max-width:720px}}
-  .layout{{display:grid;grid-template-columns:1.55fr 1fr;gap:26px;align-items:start}}
-  .card{{background:var(--card);border-radius:26px;padding:38px 40px;
+  .wrap{{max-width:1240px;margin:0 auto;padding:52px 32px 120px}}
+  .hero h1{{font-size:48px;font-weight:800;margin:0 0 16px;letter-spacing:-1.4px;line-height:1.18}}
+  .hero p{{font-size:22px;color:#4e5968;margin:0 0 40px;line-height:1.6;max-width:880px}}
+  .layout{{display:grid;grid-template-columns:1.7fr 1fr;gap:32px;align-items:start}}
+  .card{{background:var(--card);border-radius:26px;padding:42px 46px;
     box-shadow:0 1px 2px rgba(0,0,0,.04),0 14px 36px rgba(20,30,55,.07)}}
   .field{{margin-bottom:28px}} .field:last-of-type{{margin-bottom:10px}}
-  .field>label{{display:block;font-size:18px;font-weight:700;margin-bottom:7px}}
-  .field>label .opt{{color:var(--sub);font-weight:500;font-size:15px}}
-  .hint{{color:var(--sub);font-size:15.5px;margin:0 0 13px;line-height:1.55}}
-  select,input,textarea{{width:100%;padding:16px 17px;background:var(--field);border:1.5px solid transparent;
-    border-radius:15px;font-size:17px;color:var(--text);font-family:inherit;outline:none;
+  .field>label{{display:block;font-size:21px;font-weight:800;margin-bottom:8px}}
+  .field>label .opt{{color:#6b7684;font-weight:500;font-size:16px}}
+  .hint{{color:#4e5968;font-size:17px;margin:0 0 14px;line-height:1.6}}
+  select,input,textarea{{width:100%;padding:18px 18px;background:var(--field);border:1.5px solid transparent;
+    border-radius:15px;font-size:19px;color:var(--text);font-family:inherit;outline:none;
     transition:border-color .15s,background .15s,box-shadow .15s;-webkit-appearance:none}}
   textarea{{resize:vertical;line-height:1.55}}
   select:focus,input:focus,textarea:focus{{border-color:var(--blue);background:#fff;
     box-shadow:0 0 0 4px rgba(49,130,246,.13)}}
   .grid2{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}
   .seg{{display:flex;background:var(--field);border-radius:15px;padding:5px;gap:5px}}
-  .seg button{{flex:1;border:0;background:transparent;padding:14px;border-radius:12px;
-    font-size:16.5px;font-weight:700;color:var(--sub);cursor:pointer;transition:.15s}}
+  .seg button{{flex:1;border:0;background:transparent;padding:15px;border-radius:12px;
+    font-size:18px;font-weight:700;color:#4e5968;cursor:pointer;transition:.15s}}
   .seg button.on{{background:#fff;color:var(--blue);box-shadow:0 1px 5px rgba(20,30,55,.13)}}
-  .submit{{width:100%;padding:19px;background:var(--blue);color:#fff;border:0;border-radius:17px;
-    font-size:19px;font-weight:800;cursor:pointer;transition:.15s;margin-top:6px}}
+  .submit{{width:100%;padding:21px;background:var(--blue);color:#fff;border:0;border-radius:17px;
+    font-size:22px;font-weight:800;cursor:pointer;transition:.15s;margin-top:8px}}
   .submit:hover{{background:var(--blue-d)}} .submit:active{{transform:scale(.99)}}
   .submit:disabled{{background:#c6d6f5;cursor:default}}
   .spin{{display:none;text-align:center;color:var(--blue);font-weight:700;margin-top:20px;font-size:16px}}
-  .aside h3{{font-size:19px;font-weight:800;margin:0 0 16px}}
-  .aside .item{{margin-bottom:18px}}
-  .aside .item b{{display:block;font-size:16.5px;margin-bottom:3px}}
-  .aside .item span{{color:var(--sub);font-size:15px;line-height:1.55}}
-  .aside .tip{{margin-top:6px;padding:16px;background:#eef4ff;border-radius:14px;
-    color:#1b4fb0;font-size:15px;line-height:1.6;font-weight:600}}
+  .aside h3{{font-size:22px;font-weight:800;margin:0 0 18px}}
+  .aside .item{{margin-bottom:20px}}
+  .aside .item b{{display:block;font-size:18.5px;margin-bottom:4px}}
+  .aside .item span{{color:#4e5968;font-size:16.5px;line-height:1.6}}
+  .aside .tip{{margin-top:6px;padding:18px;background:#eef4ff;border-radius:14px;
+    color:#1b4fb0;font-size:16.5px;line-height:1.6;font-weight:600}}
   .chips{{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0}}
   .chips a{{display:flex;flex-direction:column;gap:3px;padding:18px 20px;background:var(--field);
     border-radius:16px;text-decoration:none;color:var(--text);font-weight:700;font-size:17px;
@@ -104,27 +104,43 @@ def page(body: str) -> bytes:
   /* 강조 블록: 검색어당 최대개수 (위계 ↑) */
   .prominent{{background:linear-gradient(180deg,#eef4ff,#f6f9ff);border:1.5px solid #d8e6ff;
     border-radius:20px;padding:24px 24px 26px;margin-bottom:28px}}
-  .prominent>label{{font-size:21px;font-weight:800;margin-bottom:7px}}
+  .prominent>label{{font-size:24px;font-weight:800;margin-bottom:8px}}
   .rangewrap{{display:flex;align-items:center;gap:18px;margin-top:10px}}
   .rangewrap input[type=range]{{flex:1;-webkit-appearance:none;appearance:none;height:10px;
     border-radius:6px;background:#cfe0ff;padding:0;border:0;outline:none}}
   .rangewrap input[type=range]::-webkit-slider-thumb{{-webkit-appearance:none;appearance:none;
     width:28px;height:28px;border-radius:50%;background:var(--blue);cursor:pointer;
     box-shadow:0 2px 8px rgba(49,130,246,.45)}}
-  output#maxv{{min-width:92px;text-align:center;font-size:26px;font-weight:800;color:var(--blue);
-    background:#fff;border-radius:13px;padding:9px 0;box-shadow:0 1px 3px rgba(0,0,0,.07)}}
+  output#maxv{{min-width:108px;text-align:center;font-size:30px;font-weight:800;color:var(--blue);
+    background:#fff;border-radius:13px;padding:11px 0;box-shadow:0 1px 3px rgba(0,0,0,.07)}}
   /* 카테고리 선택 칩 */
-  .catgroup{{margin-bottom:16px}}
-  .catgroup .gname{{font-size:15px;font-weight:800;color:var(--sub);margin:0 0 9px}}
-  .catchips{{display:flex;flex-wrap:wrap;gap:9px}}
+  .catgroup{{margin-bottom:4px}}
+  .catgroup .gname{{font-size:17px;font-weight:800;color:#3d4651;margin:0 0 10px}}
+  .catchips{{display:flex;flex-wrap:wrap;gap:10px}}
   .chk input{{position:absolute;opacity:0;width:0;height:0}}
-  .chk span{{display:inline-block;padding:10px 15px;background:var(--field);border-radius:999px;
-    font-size:15.5px;font-weight:600;cursor:pointer;border:1.6px solid transparent;
-    transition:.12s;color:#4e5968}}
+  .chk span{{display:inline-block;padding:13px 20px;background:var(--field);border-radius:999px;
+    font-size:18px;font-weight:700;cursor:pointer;border:2px solid transparent;
+    transition:.12s;color:#3d4651}}
   .chk input:checked+span{{background:#e7f0ff;border-color:var(--blue);color:var(--blue-d)}}
-  .catbox{{max-height:300px;overflow:auto;padding:4px 2px;margin-top:4px}}
-  @media(max-width:820px){{.layout{{grid-template-columns:1fr}} .hero h1{{font-size:32px}}}}
-  @media(max-width:520px){{.grid2{{grid-template-columns:1fr}} .card{{padding:28px 22px}}}}
+  .chk input:focus-visible+span{{box-shadow:0 0 0 4px rgba(49,130,246,.2)}}
+  /* 카테고리 2단계: 대분류 탭 → 중분류 칩 */
+  .catL1{{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 18px}}
+  .catL1 .l1{{border:2px solid var(--line);background:#fff;border-radius:14px;padding:13px 21px;
+    font-size:18px;font-weight:800;color:#3d4651;cursor:pointer;transition:.12s}}
+  .catL1 .l1:hover{{border-color:#c3cad4}}
+  .catL1 .l1.on{{background:var(--blue);border-color:var(--blue);color:#fff}}
+  .l2group{{display:none}} .l2group.show{{display:block}}
+  .catcount{{margin-top:16px;font-size:17px;font-weight:800;color:var(--blue)}}
+  /* 고급 설정 토글 */
+  details.adv{{margin:8px 0 2px;border-top:1px solid var(--line);padding-top:10px}}
+  details.adv>summary{{font-size:18px;font-weight:700;color:#4e5968;cursor:pointer;
+    padding:10px 0;list-style:none}}
+  details.adv>summary::-webkit-details-marker{{display:none}}
+  details.adv>summary::before{{content:'▸  ';color:var(--blue);font-weight:800}}
+  details.adv[open]>summary::before{{content:'▾  '}}
+  details.adv .field:first-of-type{{margin-top:10px}}
+  @media(max-width:900px){{.layout{{grid-template-columns:1fr}} .hero h1{{font-size:38px}}}}
+  @media(max-width:560px){{.grid2,.catbox{{grid-template-columns:1fr}} .card{{padding:30px 24px}}}}
 </style></head><body>
 <div class="topbar"><div class="inner"><div class="logo">N</div><h2>네이버쇼핑 수집기</h2></div></div>
 <div class="wrap">{body}</div></body></html>""".encode("utf-8")
@@ -153,15 +169,20 @@ NAVER_CATEGORIES = {
 
 
 def category_picker() -> str:
-    blocks = ""
-    for group, items in NAVER_CATEGORIES.items():
+    """2단계 드릴다운: 대분류 탭 → 그 안의 중분류 칩만 펼쳐 보인다."""
+    l1, l2 = "", ""
+    for i, (group, items) in enumerate(NAVER_CATEGORIES.items()):
+        on = " on" if i == 0 else ""
+        show = " show" if i == 0 else ""
+        l1 += (f'<button type="button" class="l1{on}" data-g="{i}" '
+               f'onclick="catGroup(this)">{html.escape(group)}</button>')
         chips = "".join(
-            f'<label class="chk"><input type="checkbox" name="cat" value="{html.escape(c)}">'
-            f'<span>{html.escape(c)}</span></label>'
-            for c in items
+            f'<label class="chk"><input type="checkbox" name="cat" value="{html.escape(c)}" '
+            f'onchange="catCount()"><span>{html.escape(c)}</span></label>' for c in items
         )
-        blocks += f'<div class="catgroup"><p class="gname">{html.escape(group)}</p><div class="catchips">{chips}</div></div>'
-    return f'<div class="catbox">{blocks}</div>'
+        l2 += f'<div class="l2group{show}" data-g="{i}"><div class="catchips">{chips}</div></div>'
+    return (f'<div class="catL1">{l1}</div><div class="catL2wrap">{l2}</div>'
+            f'<div class="catcount" id="catcount">선택된 카테고리: 0개</div>')
 
 
 BRANDSETS = [("kfood", "가공식품 — 라면·과자·음료 등 (약 50개 브랜드)"),
@@ -223,6 +244,9 @@ def form_body(msg: str = "") -> str:
     </div>
   </div>
 
+  <details class="adv">
+  <summary>고급 설정 (검색어 자동 추가 · 개수 제한 · 저장 형식)</summary>
+
   <div class="field" id="limitField" style="display:none">
     <label>검색어 개수 제한 <span class="opt">(선택 · 테스트용)</span></label>
     <p class="hint">브랜드셋은 브랜드×카테고리로 검색어가 <b>수십~수백 개</b> 만들어져요.
@@ -250,6 +274,7 @@ def form_body(msg: str = "") -> str:
     <p class="hint">CSV는 엑셀·구글시트에서 바로 열려요. XLSX는 엑셀 파일이에요.</p>
     <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
   </div>
+  </details>
 
   <button id="go" class="submit" type="submit">수집 시작하기</button>
   <div class="spin" id="spin">⏳ 모으는 중… 검색어 수에 따라 수십 초~몇 분 걸려요.</div>
@@ -283,6 +308,15 @@ function pick(btn){{
 function pickSnow(btn){{
   btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on'); document.getElementById('snowball').value=btn.dataset.v;
+}}
+function catGroup(btn){{
+  var g=btn.dataset.g;
+  document.querySelectorAll('.catL1 .l1').forEach(b=>b.classList.toggle('on',b===btn));
+  document.querySelectorAll('.l2group').forEach(d=>d.classList.toggle('show',d.dataset.g===g));
+}}
+function catCount(){{
+  var n=document.querySelectorAll('input[name=cat]:checked').length;
+  document.getElementById('catcount').textContent='선택된 카테고리: '+n+'개';
 }}
 </script>
 """
