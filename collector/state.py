@@ -20,8 +20,17 @@ from pathlib import Path
 from collector.export import COLUMNS
 
 
+def _identity(row: dict) -> str:
+    """추적 식별자. 변형 단위 dedup 과 맞춰 variant_key 우선, 없으면 product_id.
+
+    판매처가 바뀌어 product_id 가 달라져도 같은 변형이면 같은 키라, 실행 간
+    신규/미확인 판정이 흔들리지 않는다.
+    """
+    return (row.get("variant_key") or "").strip() or (row.get("product_id") or "").strip()
+
+
 def load_state(path) -> dict[str, dict]:
-    """product_id → 마지막 스냅샷(dict). 파일 없으면 빈 dict."""
+    """식별자 → 마지막 스냅샷(dict). 파일 없으면 빈 dict."""
     p = Path(path)
     if not p.exists():
         return {}
@@ -33,8 +42,10 @@ def load_state(path) -> dict[str, dict]:
 
 
 def _snapshot(row: dict) -> dict:
-    """state 에 저장할 컬럼만 추린 스냅샷 (재출력 가능하도록 COLUMNS 전체)."""
-    return {c: row.get(c, "") for c in COLUMNS}
+    """state 에 저장할 스냅샷 (재출력 가능하도록 COLUMNS 전체 + 식별용 variant_key)."""
+    snap = {c: row.get(c, "") for c in COLUMNS}
+    snap["variant_key"] = row.get("variant_key", "")
+    return snap
 
 
 def apply_state(rows: list[dict], state: dict, now: str):
@@ -51,12 +62,12 @@ def apply_state(rows: list[dict], state: dict, now: str):
     n_new = n_seen = 0
 
     for r in rows:
-        pid = (r.get("product_id") or "").strip()
-        if not pid:
+        ident = _identity(r)
+        if not ident:
             out.append(r)  # 식별 불가 → 추적 제외, 그대로 통과
             continue
-        current.add(pid)
-        prev = state.get(pid)
+        current.add(ident)
+        prev = state.get(ident)
         if prev:
             r["first_seen"] = prev.get("first_seen", r.get("first_seen", now))
             r["is_new"] = ""
@@ -67,19 +78,19 @@ def apply_state(rows: list[dict], state: dict, now: str):
             n_new += 1
         r["last_seen"] = now
         r["sale_status"] = "판매중"
-        new_state[pid] = _snapshot(r)
+        new_state[ident] = _snapshot(r)
         out.append(r)
 
     # 이전엔 봤는데 이번 수집에 없는 상품 → '미확인'으로 재출력 + 상태 보존
     n_missing = 0
-    for pid, snap in state.items():
-        if pid in current:
+    for ident, snap in state.items():
+        if ident in current:
             continue
         miss = dict(snap)
         miss["is_new"] = ""
         miss["sale_status"] = "미확인"
         out.append(miss)
-        new_state[pid] = miss
+        new_state[ident] = miss
         n_missing += 1
 
     return out, new_state, {"new": n_new, "seen": n_seen, "missing": n_missing}

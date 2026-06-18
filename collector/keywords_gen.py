@@ -24,6 +24,7 @@ CSV(data/kr_food_brands_db.csv) 컬럼:
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -134,3 +135,30 @@ def estimate_calls(n_keywords: int, max_items: int = MAX_ITEMS) -> int:
     """검색어 N개 수집 시 예상 API 호출 수 (하루 25,000 한도 가늠용)."""
     pages = (min(max_items, MAX_ITEMS) + MAX_DISPLAY - 1) // MAX_DISPLAY
     return n_keywords * pages
+
+
+# 브랜드로 보기 어려운 잡음(첫 단어 추정이 빗나간 경우)을 거른다.
+_BAD_BRAND = re.compile(r"[\[\]()<>/+]|^\d")
+
+
+def discover_brands(rows, known: set, min_count: int = 3, limit: int | None = None) -> list[str]:
+    """수집 결과에서 '새 브랜드'를 찾아낸다 (눈덩이 확장용).
+
+    known 에 없고, min_count 회 이상 등장하며, 잡음이 아닌 브랜드만 추린다.
+    등장 빈도 내림차순으로 정렬해 반환(인기 브랜드 먼저). known 은 소문자 비교.
+    """
+    counts: dict[str, int] = {}
+    display: dict[str, str] = {}
+    for r in rows:
+        b = (r.get("brand") or "").strip()
+        key = b.lower()
+        if not b or len(b) < 2 or key in known:
+            continue
+        if _BAD_BRAND.search(b):
+            continue
+        counts[key] = counts.get(key, 0) + 1
+        display.setdefault(key, b)
+    found = [k for k, c in counts.items() if c >= min_count]
+    found.sort(key=lambda k: counts[k], reverse=True)
+    out = [display[k] for k in found]
+    return out[:limit] if limit is not None else out
