@@ -49,10 +49,10 @@ def strip_title(title: str) -> str:
     return _SPACE_RE.sub(" ", text).strip()
 
 
-def guess_brand(name: str) -> str:
-    """브랜드 필드가 비었을 때 상품명 앞 단어로 추정 (최후 보정용, 완벽하지 않음)."""
-    parts = (name or "").split()
-    return parts[0] if parts else ""
+# 진짜 브랜드를 모를 때(검색어 힌트도, API brand/maker 도 없을 때) 쓰는 라벨.
+# 예전엔 상품명 첫 단어로 추정했지만 '남자의류'의 '남자'처럼 오인이 잦아 명시 라벨로 바꿨다.
+# 이러면 다운스트림 필터링이 쉬움: 브랜드 == NO_BRAND 인 행만 걸러내면 된다.
+NO_BRAND = "브랜드 없음"
 
 
 def _collapse_tokens(tokens: list[str]) -> list[str]:
@@ -89,7 +89,7 @@ def clean_product_name(name: str, brand: str) -> str:
     s = _SEP_RE.sub(" ", s)
     s = " ".join(_collapse_tokens([t for t in s.split() if t]))
     b = (brand or "").strip()
-    if b and not s.lower().startswith(b.lower()):
+    if b and b != NO_BRAND and not s.lower().startswith(b.lower()):
         s = f"{b} {s}".strip()
     return s
 
@@ -116,8 +116,8 @@ def clean_rows(rows: list[dict]) -> list[dict]:
     """
     for r in rows:
         r["name"] = strip_title(r.get("name", ""))
-        if not r.get("brand"):  # brand_hint·API 둘 다 비었을 때만 최후 추정
-            r["brand"] = guess_brand(r["name"])
+        if not r.get("brand"):  # 힌트·API 둘 다 없으면 추정하지 않고 '브랜드 없음'
+            r["brand"] = NO_BRAND
         r.update(parse_variants(r["name"]))
         r["product_name"] = clean_product_name(r["name"], r.get("brand", ""))
         # 복합(세트/모음/도배) 여부 — 원본+정제명 기준. 시드에선 빼고 별도 시트로 격리.
