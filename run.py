@@ -225,20 +225,22 @@ def main() -> None:
 
     if args.out:
         out_path = Path(args.out)
+        label = out_path.stem
     else:
         DEFAULT_OUT_DIR.mkdir(exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        out_path = DEFAULT_OUT_DIR / f"products_{stamp}.{args.format}"
+        label = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_path = DEFAULT_OUT_DIR / f"products_{label}.{args.format}"
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     save(all_rows, str(out_path), args.format)
     print(f"\n저장 완료(상세 SKU): {out_path}  ({len(all_rows)}건)")
 
-    # 제품 단위 distilled('브랜드 + 제품명') 시드 — 복합(세트/모음) 제외한 단일 제품만
+    # 제품 단위 distilled('브랜드 + 제품명') 시드 — 복합(세트/모음) 제외한 단일 제품만.
+    # 최종 DB용이라 폴더에서 바로 눈에 띄게 이름을 따로 준다.
     seed_rows = distill(all_rows)
-    seed_path = out_path.with_name(f"{out_path.stem}_seed{out_path.suffix}")
+    seed_path = out_path.with_name(f"먹보고_최종DB시드_{label}{out_path.suffix}")
     save_seed(seed_rows, str(seed_path), args.format)
-    print(f"저장 완료(브랜드·제품명 시드): {seed_path}  ({len(seed_rows)}개 제품)")
+    print(f"저장 완료(★최종 DB 시드): {seed_path}  ({len(seed_rows)}개 제품)")
 
     # 복합(세트/모음/도배) 상품은 별도 시트로 격리 — 나중에 재정제
     comp_rows = [r for r in all_rows if r.get("is_bundle")]
