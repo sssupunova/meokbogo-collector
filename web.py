@@ -123,8 +123,22 @@ def page(body: str) -> bytes:
     transition:.12s;color:#3d4651}}
   .chk input:checked+span{{background:#e7f0ff;border-color:var(--blue);color:var(--blue-d)}}
   .chk input:focus-visible+span{{box-shadow:0 0 0 4px rgba(49,130,246,.2)}}
-  /* 카테고리: 내부 스크롤 없이 2열로 전부 펼침 */
-  .catbox{{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;padding:2px;margin-top:6px}}
+  /* 카테고리 2단계: 대분류 탭 → 중분류 칩 */
+  .catL1{{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 18px}}
+  .catL1 .l1{{border:2px solid var(--line);background:#fff;border-radius:14px;padding:13px 21px;
+    font-size:18px;font-weight:800;color:#3d4651;cursor:pointer;transition:.12s}}
+  .catL1 .l1:hover{{border-color:#c3cad4}}
+  .catL1 .l1.on{{background:var(--blue);border-color:var(--blue);color:#fff}}
+  .l2group{{display:none}} .l2group.show{{display:block}}
+  .catcount{{margin-top:16px;font-size:17px;font-weight:800;color:var(--blue)}}
+  /* 고급 설정 토글 */
+  details.adv{{margin:8px 0 2px;border-top:1px solid var(--line);padding-top:10px}}
+  details.adv>summary{{font-size:18px;font-weight:700;color:#4e5968;cursor:pointer;
+    padding:10px 0;list-style:none}}
+  details.adv>summary::-webkit-details-marker{{display:none}}
+  details.adv>summary::before{{content:'▸  ';color:var(--blue);font-weight:800}}
+  details.adv[open]>summary::before{{content:'▾  '}}
+  details.adv .field:first-of-type{{margin-top:10px}}
   @media(max-width:900px){{.layout{{grid-template-columns:1fr}} .hero h1{{font-size:38px}}}}
   @media(max-width:560px){{.grid2,.catbox{{grid-template-columns:1fr}} .card{{padding:30px 24px}}}}
 </style></head><body>
@@ -155,15 +169,20 @@ NAVER_CATEGORIES = {
 
 
 def category_picker() -> str:
-    blocks = ""
-    for group, items in NAVER_CATEGORIES.items():
+    """2단계 드릴다운: 대분류 탭 → 그 안의 중분류 칩만 펼쳐 보인다."""
+    l1, l2 = "", ""
+    for i, (group, items) in enumerate(NAVER_CATEGORIES.items()):
+        on = " on" if i == 0 else ""
+        show = " show" if i == 0 else ""
+        l1 += (f'<button type="button" class="l1{on}" data-g="{i}" '
+               f'onclick="catGroup(this)">{html.escape(group)}</button>')
         chips = "".join(
-            f'<label class="chk"><input type="checkbox" name="cat" value="{html.escape(c)}">'
-            f'<span>{html.escape(c)}</span></label>'
-            for c in items
+            f'<label class="chk"><input type="checkbox" name="cat" value="{html.escape(c)}" '
+            f'onchange="catCount()"><span>{html.escape(c)}</span></label>' for c in items
         )
-        blocks += f'<div class="catgroup"><p class="gname">{html.escape(group)}</p><div class="catchips">{chips}</div></div>'
-    return f'<div class="catbox">{blocks}</div>'
+        l2 += f'<div class="l2group{show}" data-g="{i}"><div class="catchips">{chips}</div></div>'
+    return (f'<div class="catL1">{l1}</div><div class="catL2wrap">{l2}</div>'
+            f'<div class="catcount" id="catcount">선택된 카테고리: 0개</div>')
 
 
 BRANDSETS = [("kfood", "가공식품 — 라면·과자·음료 등 (약 50개 브랜드)"),
@@ -225,6 +244,9 @@ def form_body(msg: str = "") -> str:
     </div>
   </div>
 
+  <details class="adv">
+  <summary>고급 설정 (검색어 자동 추가 · 개수 제한 · 저장 형식)</summary>
+
   <div class="field" id="limitField" style="display:none">
     <label>검색어 개수 제한 <span class="opt">(선택 · 테스트용)</span></label>
     <p class="hint">브랜드셋은 브랜드×카테고리로 검색어가 <b>수십~수백 개</b> 만들어져요.
@@ -252,6 +274,7 @@ def form_body(msg: str = "") -> str:
     <p class="hint">CSV는 엑셀·구글시트에서 바로 열려요. XLSX는 엑셀 파일이에요.</p>
     <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
   </div>
+  </details>
 
   <button id="go" class="submit" type="submit">수집 시작하기</button>
   <div class="spin" id="spin">⏳ 모으는 중… 검색어 수에 따라 수십 초~몇 분 걸려요.</div>
@@ -285,6 +308,15 @@ function pick(btn){{
 function pickSnow(btn){{
   btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on'); document.getElementById('snowball').value=btn.dataset.v;
+}}
+function catGroup(btn){{
+  var g=btn.dataset.g;
+  document.querySelectorAll('.catL1 .l1').forEach(b=>b.classList.toggle('on',b===btn));
+  document.querySelectorAll('.l2group').forEach(d=>d.classList.toggle('show',d.dataset.g===g));
+}}
+function catCount(){{
+  var n=document.querySelectorAll('input[name=cat]:checked').length;
+  document.getElementById('catcount').textContent='선택된 카테고리: '+n+'개';
 }}
 </script>
 """
