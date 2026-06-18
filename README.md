@@ -76,7 +76,7 @@ python run.py --brands-csv --dump-keywords keywords.txt  # 생성만 (검수용,
 한 번 실행하면 세 파일이 나온다.
 
 1. **상세 SKU** `products_*.xlsx` — 변형(용량/입수)별 한 행, 전체 컬럼
-2. **브랜드·제품명 시드** `products_*_seed.xlsx` — 단일 제품만 추린 먹보고 시드
+2. **★최종 DB 시드** `먹보고_최종DB시드_*.xlsx` — 단일 제품만 추린 먹보고 DB용 (폴더에서 바로 눈에 띄게 별도 이름)
 3. **복합 상품** `products_*_composite.xlsx` — 세트/모음/도배 상품을 격리(재정제용)
 
 ### 상세 SKU 컬럼
