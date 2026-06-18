@@ -40,6 +40,7 @@ def search(
     delay: float = 0.3,
     timeout: float = 10.0,
     session: requests.Session | None = None,
+    brand_hint: str = "",
 ):
     """검색어 하나로 네이버쇼핑을 페이지네이션하며 상품을 모은다.
 
@@ -75,7 +76,7 @@ def search(
         for offset, it in enumerate(items):
             # rank = 검색 결과 내 위치(1-base) = 인기/관련도 신호.
             # 네이버 Open API 에는 '랭킹순' 정렬이 없어, sort 결과의 순서를 신호로 캡처한다.
-            rows.append(_to_row(it, keyword, rank=start + offset))
+            rows.append(_to_row(it, keyword, rank=start + offset, brand_hint=brand_hint))
 
         if len(items) < display:
             break  # 마지막 페이지
@@ -86,14 +87,21 @@ def search(
     return rows
 
 
-def _to_row(item: dict, keyword: str, rank: int) -> dict:
-    """네이버 API item → 공통 행 스키마. clean 단계에서 title 태그·변형속성을 처리한다."""
+def _to_row(item: dict, keyword: str, rank: int, brand_hint: str = "") -> dict:
+    """네이버 API item → 공통 행 스키마. clean 단계에서 title 태그·변형속성을 처리한다.
+
+    brand: brand_hint(검색어의 브랜드)가 있으면 그걸 우선한다. 브랜드 타깃 검색이라
+    검색어 브랜드가 가장 신뢰도 높고(예: '삼양식품 라면'→삼양식품), 네이버가 brand
+    필드를 비우거나 서브라인('신라면'·'맵탱')을 넣는 오염을 함께 막는다. 원본 brand/maker
+    는 maker 필드에 남겨 감사용으로 보존. hint 없으면(수동 검색어) API brand→maker 순.
+    """
     now = _now_iso()
+    api_brand = (item.get("brand") or item.get("maker") or "").strip()
     return {
         "source": SOURCE,
         "keyword": keyword,
         "rank": rank,
-        "brand": (item.get("brand") or item.get("maker") or "").strip(),
+        "brand": brand_hint.strip() or api_brand,
         "name": item.get("title", ""),          # <b> 태그 포함 — clean.py에서 제거
         "maker": (item.get("maker") or "").strip(),
         "price": item.get("lprice", ""),

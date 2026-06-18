@@ -24,8 +24,8 @@ from pathlib import Path
 
 from collector.sites import navershop
 from collector.clean import clean_rows
-from collector.dedup import dedup
-from collector.export import save
+from collector.dedup import dedup, distill
+from collector.export import save, save_seed
 from collector import keywords_gen
 from collector import state as state_mod
 
@@ -60,21 +60,26 @@ def _read_keywords_file(path: Path) -> list[str]:
     return out
 
 
-def build_keywords(args) -> list[str]:
-    """검색어 입력원 결정 — 우선순위: --keywords > --brands-csv > keywords.txt."""
+def build_keywords(args):
+    """검색어 입력원 결정 — 우선순위: --keywords > --brands-csv > keywords.txt.
+
+    반환: (keywords, brand_hints) — brand_hints[검색어]=브랜드 (수집 시 행에 주입).
+    """
     if args.keywords:
-        return args.keywords
+        return args.keywords, {}
 
     if args.brands_csv:
         try:
             brands = keywords_gen.load_brands(args.brands_csv, type_filter=args.type)
         except (FileNotFoundError, ValueError) as e:
             sys.exit(str(e))
-        keywords = keywords_gen.generate_keywords(
+        pairs = keywords_gen.generate_keyword_brands(
             brands, mode=args.gen_mode, limit=args.limit,
         )
-        if not keywords:
+        if not pairs:
             sys.exit(f"브랜드 CSV 에서 생성된 검색어가 없습니다: {args.brands_csv}")
+        keywords = [kw for kw, _ in pairs]
+        hints = {kw: brand for kw, brand in pairs}
         calls = keywords_gen.estimate_calls(len(keywords), args.max)
         print(
             f"브랜드 CSV → 검색어 {len(keywords)}개 생성 "
@@ -82,9 +87,9 @@ def build_keywords(args) -> list[str]:
             f"{f', limit={args.limit}' if args.limit else ''})\n"
             f"예상 API 호출 ~{calls}회 (하루 한도 25,000)\n"
         )
-        return keywords
+        return keywords, hints
 
-    return _read_keywords_file(Path(args.keywords_file))
+    return _read_keywords_file(Path(args.keywords_file)), {}
 
 
 def main() -> None:
@@ -125,7 +130,7 @@ def main() -> None:
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
     args = ap.parse_args()
 
-    keywords = build_keywords(args)
+    keywords, brand_hints = build_keywords(args)
 
     # 검색어 생성만 하고 끝내는 모드 (검수용) — 수집 안 하므로 API 키 불필요
     if args.dump_keywords:
@@ -148,8 +153,11 @@ def main() -> None:
 
     searched: set[str] = set()
 
-    def collect(kw_list: list[str]) -> list[dict]:
-        """검색어 리스트를 수집해 정제까지 마친 행 리스트를 돌려준다(이미 검색한 건 건너뜀)."""
+    def collect(kw_list: list[str], hints: dict) -> list[dict]:
+        """검색어 리스트를 수집해 정제까지 마친 행 리스트를 돌려준다(이미 검색한 건 건너뜀).
+
+        hints[검색어]=브랜드 를 행에 주입해 브랜드 칸 오염을 막는다.
+        """
         rows: list[dict] = []
         todo = [k for k in kw_list if k not in searched]
         for i, kw in enumerate(todo, 1):
@@ -158,6 +166,7 @@ def main() -> None:
                 r = navershop.search(
                     kw, client_id, client_secret,
                     max_items=args.max, sort=args.sort, delay=args.delay,
+                    brand_hint=hints.get(kw, ""),
                 )
             except Exception as e:  # noqa: BLE001  네트워크/한도 오류는 건너뛰고 계속
                 print(f"  [{i}/{len(todo)}] {kw}: 실패 — {e}")
@@ -167,7 +176,7 @@ def main() -> None:
         return clean_rows(rows)
 
     all_rows: list[dict] = []
-    new_rows = collect(keywords)
+    new_rows = collect(keywords, brand_hints)
     all_rows.extend(new_rows)
 
     # 눈덩이 확장: 직전 결과의 '새 브랜드'를 brand_only 검색어로 재투입 (반복)
@@ -191,8 +200,9 @@ def main() -> None:
             for b in new_brands:
                 known_brands.add(b.lower())
             kw2 = keywords_gen.generate_keywords([], mode="brand_only", extra_brands=new_brands)
+            hints2 = {k: k for k in kw2}  # brand_only → 검색어가 곧 브랜드
             print(f"\n눈덩이 {rnd}/{args.snowball}회차: 새 브랜드 {len(new_brands)}개 재투입")
-            new_rows = collect(kw2)
+            new_rows = collect(kw2, hints2)
             all_rows.extend(new_rows)
 
     print(f"\n원본 합계 {len(all_rows)}건 → 변형 단위 중복제거 중...")
@@ -222,7 +232,17 @@ def main() -> None:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     save(all_rows, str(out_path), args.format)
-    print(f"\n저장 완료: {out_path}  ({len(all_rows)}건)")
+    print(f"\n저장 완료(상세 SKU): {out_path}  ({len(all_rows)}건)")
+
+    # 제품 단위 distilled('브랜드 + 제품명') 시드도 함께 저장 (번들 제외)
+    n_bundle = sum(1 for r in all_rows if r.get("is_bundle"))
+    seed_rows = distill(all_rows)
+    seed_path = out_path.with_name(f"{out_path.stem}_seed{out_path.suffix}")
+    save_seed(seed_rows, str(seed_path), args.format)
+    print(
+        f"저장 완료(브랜드·제품명 시드): {seed_path}  "
+        f"({len(seed_rows)}개 제품, 번들 {n_bundle}건 제외)"
+    )
 
 
 if __name__ == "__main__":

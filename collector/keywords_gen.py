@@ -83,52 +83,66 @@ def load_brands(csv_path, type_filter: str = "manufacturer") -> list[Brand]:
     return brands
 
 
-def generate_keywords(
+def generate_keyword_brands(
     brands: list[Brand],
     mode: str = "brand_x_category",
     limit: int | None = None,
     extra_brands=None,
-) -> list[str]:
-    """브랜드 리스트 → 검색어 리스트 (등장 순서 유지, 대소문자 무시 dedup).
+) -> list[tuple[str, str]]:
+    """브랜드 리스트 → (검색어, 브랜드) 쌍 리스트 (등장 순서 유지, 대소문자 무시 dedup).
+
+    브랜드를 함께 돌려주는 이유: 수집 시 각 행에 '브랜드를 주입'하기 위해서다.
+    네이버 API 가 brand 필드를 비워 보내는 경우가 많아, "농심 라면"으로 검색했다는
+    사실(=브랜드는 농심)을 행에 박아넣으면 브랜드 칸 오염을 막을 수 있다.
 
     mode:
-      brand_x_category  "농심 라면"   — 행 자기 subcategory 와 곱함 (기본·권장)
-      brand_only        "농심"        — 호출 적고 가장 넓게, 인기순으로 주력 제품 훑기
+      brand_x_category  ("농심 라면", "농심")   — 행 자기 subcategory 와 곱함 (기본·권장)
+      brand_only        ("농심", "농심")        — 호출 적고 가장 넓게
     extra_brands:
-      눈덩이(snowball) 확장용 추가 브랜드명(문자열) iterable. brand_only 로 합류한다.
-      수집 결과에서 발견된 신규 브랜드를 같은 함수로 재투입하기 위한 통로(3번 기능 공유).
+      눈덩이(snowball) 확장용 추가 브랜드명. 검색어=브랜드 자기 자신으로 합류.
     limit:
-      생성 검색어 상한. CSV 가 이미 매출·순위로 큐레이션돼 있어 앞에서부터 자른다.
+      생성 검색어 상한. CSV 가 매출·순위로 큐레이션돼 있어 앞에서부터 자른다.
     """
     if mode not in GEN_MODES:
         raise ValueError(f"알 수 없는 mode: {mode!r} (가능: {', '.join(GEN_MODES)})")
 
-    keywords: list[str] = []
+    pairs: list[tuple[str, str]] = []
     seen: set[str] = set()
 
-    def add(kw: str) -> None:
+    def add(kw: str, brand: str) -> None:
         kw = " ".join((kw or "").split())  # 공백 정리
         key = kw.lower()
         if kw and key not in seen:
             seen.add(key)
-            keywords.append(kw)
+            pairs.append((kw, brand.strip()))
 
     for b in brands:
         brand = b.search_brand
         if not brand:
             continue
         if mode == "brand_only":
-            add(brand)
+            add(brand, brand)
         else:  # brand_x_category
             cat = b.subcategory
-            add(f"{brand} {cat}" if cat else brand)
+            add(f"{brand} {cat}" if cat else brand, brand)
 
     for name in (extra_brands or []):
-        add(str(name))
+        s = str(name).strip()
+        add(s, s)
 
     if limit is not None:
-        keywords = keywords[:limit]
-    return keywords
+        pairs = pairs[:limit]
+    return pairs
+
+
+def generate_keywords(
+    brands: list[Brand],
+    mode: str = "brand_x_category",
+    limit: int | None = None,
+    extra_brands=None,
+) -> list[str]:
+    """generate_keyword_brands 에서 검색어 문자열만 추린다 (dump/하위호환)."""
+    return [kw for kw, _ in generate_keyword_brands(brands, mode, limit, extra_brands)]
 
 
 def estimate_calls(n_keywords: int, max_items: int = MAX_ITEMS) -> int:
