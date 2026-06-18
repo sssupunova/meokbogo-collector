@@ -19,13 +19,14 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from collector.sites import navershop
 from collector.clean import clean_rows, dedup
 from collector.export import save
 from collector import keywords_gen
+from collector import state as state_mod
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_KEYWORDS_FILE = ROOT / "keywords.txt"
@@ -107,7 +108,13 @@ def main() -> None:
         "--dump-keywords", help="생성한 검색어를 파일로만 저장하고 종료 (수집·API키 불필요)",
     )
     ap.add_argument("--max", type=int, default=1000, help="검색어당 최대 수집 건수 (최대 1000)")
-    ap.add_argument("--sort", default="sim", choices=["sim", "date", "asc", "dsc"])
+    ap.add_argument(
+        "--sort", default="sim", choices=["sim", "date", "asc", "dsc"],
+        help="정렬(=인기신호 근사). Open API엔 랭킹순이 없어 sim(관련도) 권장, 순서는 인기순위로 캡처",
+    )
+    ap.add_argument(
+        "--state", help="시판여부 추적 상태파일(JSON). 실행 간 first/last_seen·신규·미확인 비교",
+    )
     ap.add_argument("--delay", type=float, default=0.3, help="페이지 호출 간 지연(초)")
     ap.add_argument("--format", default="xlsx", choices=["xlsx", "csv"])
     ap.add_argument("--out", help="출력 파일 경로 (없으면 output/ 에 자동 생성)")
@@ -154,6 +161,17 @@ def main() -> None:
 
     if not all_rows:
         sys.exit("수집된 상품이 없습니다.")
+
+    # 실행 간 시판여부 추적 (선택적) — first/last_seen·신규·미확인 갱신
+    if args.state:
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        prev = state_mod.load_state(args.state)
+        all_rows, new_state, st = state_mod.apply_state(all_rows, prev, now)
+        state_mod.save_state(args.state, new_state)
+        print(
+            f"상태 추적: 신규 {st['new']} · 기존 {st['seen']} · 미확인 {st['missing']}"
+            f"  → {args.state}"
+        )
 
     if args.out:
         out_path = Path(args.out)

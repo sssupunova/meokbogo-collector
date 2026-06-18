@@ -72,8 +72,10 @@ def search(
         if not items:
             break
 
-        for it in items:
-            rows.append(_to_row(it, keyword))
+        for offset, it in enumerate(items):
+            # rank = 검색 결과 내 위치(1-base) = 인기/관련도 신호.
+            # 네이버 Open API 에는 '랭킹순' 정렬이 없어, sort 결과의 순서를 신호로 캡처한다.
+            rows.append(_to_row(it, keyword, rank=start + offset))
 
         if len(items) < display:
             break  # 마지막 페이지
@@ -84,11 +86,13 @@ def search(
     return rows
 
 
-def _to_row(item: dict, keyword: str) -> dict:
-    """네이버 API item → 공통 행 스키마. clean 단계에서 title 태그를 정제한다."""
+def _to_row(item: dict, keyword: str, rank: int) -> dict:
+    """네이버 API item → 공통 행 스키마. clean 단계에서 title 태그·변형속성을 처리한다."""
+    now = _now_iso()
     return {
         "source": SOURCE,
         "keyword": keyword,
+        "rank": rank,
         "brand": (item.get("brand") or item.get("maker") or "").strip(),
         "name": item.get("title", ""),          # <b> 태그 포함 — clean.py에서 제거
         "maker": (item.get("maker") or "").strip(),
@@ -103,5 +107,10 @@ def _to_row(item: dict, keyword: str) -> dict:
         "image": item.get("image", ""),
         "link": item.get("link", ""),
         "product_id": item.get("productId", ""),
-        "collected_at": _now_iso(),
+        # 시판여부 추적용. --state 없이 단일 실행이면 셋 다 '이번 수집' 기준.
+        "is_new": "",            # 신규 발견 여부 (state 비교 시 채움)
+        "first_seen": now,       # 최초 수집일
+        "last_seen": now,        # 최종 확인일
+        "sale_status": "판매중",  # API 결과에 있다 = 현재 판매중
+        "collected_at": now,
     }

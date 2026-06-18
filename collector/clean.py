@@ -10,6 +10,8 @@ from __future__ import annotations
 import html
 import re
 
+from collector.variants import parse_variants
+
 _TAG_RE = re.compile(r"</?b>", re.IGNORECASE)
 _SPACE_RE = re.compile(r"\s+")
 
@@ -28,11 +30,15 @@ def guess_brand(name: str) -> str:
 
 
 def clean_rows(rows: list[dict]) -> list[dict]:
-    """행 리스트를 정제한다. (원본 변형 — 같은 객체를 갱신)"""
+    """행 리스트를 정제한다. (원본 변형 — 같은 객체를 갱신)
+
+    상품명 태그 제거 → 브랜드 보정 → 정제된 상품명에서 변형속성(용량/형태/입수/한정) 파싱.
+    """
     for r in rows:
         r["name"] = strip_title(r.get("name", ""))
         if not r.get("brand"):
             r["brand"] = guess_brand(r["name"])
+        r.update(parse_variants(r["name"]))
     return rows
 
 
