@@ -229,13 +229,15 @@ def form_body(msg: str = "") -> str:
   </div>
 
   <div class="field">
-    <label>눈덩이 확장 <span class="opt">(선택)</span></label>
-    <p class="hint">모은 결과에서 <b>새로 발견된 브랜드</b>를 다시 검색어로 넣어 더 넓게. (눈사람 굴리듯 📈)</p>
+    <label>검색어 자동 추가 <span class="opt">(선택 · 회차)</span></label>
+    <p class="hint">처음엔 고른 검색어로만 모아요. 그 결과에 <b>처음 검색어엔 없던 새 브랜드</b>가
+      보이면, 그 브랜드를 <b>검색어로 추가해 한 번 더</b> 모읍니다. 고른 회차만큼 반복돼
+      검색어가 점점 늘어나요. <b>안 함</b>이면 처음 검색어 그대로만.</p>
     <div class="seg" id="snowSeg">
       <button type="button" class="on" data-v="0" onclick="pickSnow(this)">안 함</button>
-      <button type="button" data-v="1" onclick="pickSnow(this)">1회</button>
-      <button type="button" data-v="2" onclick="pickSnow(this)">2회</button>
-      <button type="button" data-v="3" onclick="pickSnow(this)">3회</button>
+      <button type="button" data-v="1" onclick="pickSnow(this)">1회 더</button>
+      <button type="button" data-v="2" onclick="pickSnow(this)">2회 더</button>
+      <button type="button" data-v="3" onclick="pickSnow(this)">3회 더</button>
     </div>
     <input type="hidden" name="snowball" id="snowball" value="0">
   </div>
