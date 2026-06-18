@@ -20,6 +20,19 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 웹 GUI (로컬호스트)
+
+명령어가 익숙치 않으면 브라우저에서 클릭으로 수집할 수 있다(추가 의존성 없음).
+
+```bash
+python web.py            # http://localhost:8000
+python web.py 8080       # 포트 지정
+```
+
+프로파일(kfood/health/…)을 고르고 '브랜드 CSV 자동생성' 또는 '직접 키워드'를 선택해
+실행하면, 결과 요약과 **상세·시드·복합** 파일 다운로드 링크가 나온다(내부적으로 `run.py` 호출).
+`.env` 의 네이버 API 키가 필요하다.
+
 ## 설정
 
 1. [네이버 개발자센터](https://developers.naver.com)에서 애플리케이션 등록 → **검색 API** 추가
@@ -182,7 +195,8 @@ collector/
   state.py             실행 간 시판여부 추적 (선택적, --state)
   clean.py             상품명 태그 제거 · 브랜드 보정 · 제품명 정제 · 번들 검출 · 변형속성 파싱
   export.py            xlsx / csv 저장 (상세 SKU + 브랜드·제품명 시드)
-run.py                 진입점 (검색어 결정 → 루프 → 정제 → 저장)
+run.py                 진입점 CLI (검색어 결정 → 루프 → 정제 → 저장)
+web.py                 로컬호스트 웹 GUI (표준 라이브러리, run.py 를 호출)
 keywords.txt           수집할 검색어 목록 (직접 지정용)
 data/kr_food_brands_db.csv   브랜드 시드 DB (검색어 자동생성 입력)
 profiles/*.json        도메인 프로파일 (kfood 는 빌트인 기본값, example_cosmetics 는 샘플)
