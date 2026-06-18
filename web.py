@@ -101,6 +101,28 @@ def page(body: str) -> bytes:
   .err{{color:#e0264b}}
   a.back{{display:inline-block;margin-top:24px;color:var(--blue);font-weight:700;
     text-decoration:none;font-size:16.5px}}
+  /* 강조 블록: 검색어당 최대개수 (위계 ↑) */
+  .prominent{{background:linear-gradient(180deg,#eef4ff,#f6f9ff);border:1.5px solid #d8e6ff;
+    border-radius:20px;padding:24px 24px 26px;margin-bottom:28px}}
+  .prominent>label{{font-size:21px;font-weight:800;margin-bottom:7px}}
+  .rangewrap{{display:flex;align-items:center;gap:18px;margin-top:10px}}
+  .rangewrap input[type=range]{{flex:1;-webkit-appearance:none;appearance:none;height:10px;
+    border-radius:6px;background:#cfe0ff;padding:0;border:0;outline:none}}
+  .rangewrap input[type=range]::-webkit-slider-thumb{{-webkit-appearance:none;appearance:none;
+    width:28px;height:28px;border-radius:50%;background:var(--blue);cursor:pointer;
+    box-shadow:0 2px 8px rgba(49,130,246,.45)}}
+  output#maxv{{min-width:92px;text-align:center;font-size:26px;font-weight:800;color:var(--blue);
+    background:#fff;border-radius:13px;padding:9px 0;box-shadow:0 1px 3px rgba(0,0,0,.07)}}
+  /* 카테고리 선택 칩 */
+  .catgroup{{margin-bottom:16px}}
+  .catgroup .gname{{font-size:15px;font-weight:800;color:var(--sub);margin:0 0 9px}}
+  .catchips{{display:flex;flex-wrap:wrap;gap:9px}}
+  .chk input{{position:absolute;opacity:0;width:0;height:0}}
+  .chk span{{display:inline-block;padding:10px 15px;background:var(--field);border-radius:999px;
+    font-size:15.5px;font-weight:600;cursor:pointer;border:1.6px solid transparent;
+    transition:.12s;color:#4e5968}}
+  .chk input:checked+span{{background:#e7f0ff;border-color:var(--blue);color:var(--blue-d)}}
+  .catbox{{max-height:300px;overflow:auto;padding:4px 2px;margin-top:4px}}
   @media(max-width:820px){{.layout{{grid-template-columns:1fr}} .hero h1{{font-size:32px}}}}
   @media(max-width:520px){{.grid2{{grid-template-columns:1fr}} .card{{padding:28px 22px}}}}
 </style></head><body>
@@ -109,10 +131,37 @@ def page(body: str) -> bytes:
 
 
 _PROFILE_DESC = {
+    "general": "범용 — 아무 카테고리/키워드나 (브랜드 자동 ✕)",
     "kfood": "가공식품 (라면·과자·음료 등)",
     "health": "건강기능식품 (홍삼·유산균·비타민 등)",
     "example_cosmetics": "화장품 (예시용 샘플)",
 }
+
+# 네이버쇼핑 대분류 → 중분류 (카테고리 선택기에서 검색어로 사용)
+NAVER_CATEGORIES = {
+    "식품": ["라면", "과자", "스낵", "음료", "커피", "생수", "건강식품", "즉석밥", "냉동식품", "소스", "유제품"],
+    "화장품/미용": ["스킨케어", "메이크업", "마스크팩", "향수", "헤어케어", "바디케어", "선크림", "네일"],
+    "디지털/가전": ["노트북", "휴대폰", "이어폰", "TV", "냉장고", "세탁기", "청소기", "모니터", "키보드"],
+    "패션의류": ["여성의류", "남성의류", "아우터", "티셔츠", "원피스", "청바지"],
+    "패션잡화": ["운동화", "구두", "가방", "지갑", "모자", "시계", "선글라스"],
+    "생활/건강": ["세제", "화장지", "영양제", "칫솔", "주방세제", "마스크", "수건"],
+    "출산/육아": ["분유", "기저귀", "물티슈", "유아간식", "아기로션", "젖병"],
+    "스포츠/레저": ["등산", "골프", "헬스", "자전거", "캠핑", "요가매트"],
+    "가구/인테리어": ["침대", "소파", "책상", "의자", "조명", "수납장"],
+    "반려동물": ["강아지사료", "고양이사료", "반려동물간식", "고양이모래", "강아지간식"],
+}
+
+
+def category_picker() -> str:
+    blocks = ""
+    for group, items in NAVER_CATEGORIES.items():
+        chips = "".join(
+            f'<label class="chk"><input type="checkbox" name="cat" value="{html.escape(c)}">'
+            f'<span>{html.escape(c)}</span></label>'
+            for c in items
+        )
+        blocks += f'<div class="catgroup"><p class="gname">{html.escape(group)}</p><div class="catchips">{chips}</div></div>'
+    return f'<div class="catbox">{blocks}</div>'
 
 
 def form_body(msg: str = "") -> str:
@@ -134,8 +183,8 @@ def form_body(msg: str = "") -> str:
 
   <div class="field">
     <label>어떤 분야를 모을까요?</label>
-    <p class="hint">분야마다 브랜드 목록과 상품명 정리 규칙이 달라요.</p>
-    <select name="profile">{opts}</select>
+    <p class="hint">분야마다 브랜드 목록과 상품명 정리 규칙이 달라요. 카테고리/직접 키워드로 넓게 모으려면 <b>범용</b>.</p>
+    <select name="profile" id="profile">{opts}</select>
   </div>
 
   <div class="field">
@@ -143,9 +192,16 @@ def form_body(msg: str = "") -> str:
     <p class="hint" id="srcHint">준비된 브랜드 목록으로 검색어를 자동으로 만들어 한 번에 모아와요. (추천)</p>
     <div class="seg">
       <button type="button" class="on" data-v="brands" onclick="pick(this)">브랜드 목록 자동</button>
+      <button type="button" data-v="category" onclick="pick(this)">카테고리 선택</button>
       <button type="button" data-v="keywords" onclick="pick(this)">직접 키워드</button>
     </div>
     <input type="hidden" name="source" id="source" value="brands">
+  </div>
+
+  <div class="field" id="catBlock" style="display:none">
+    <label>네이버쇼핑 카테고리 고르기</label>
+    <p class="hint">고른 카테고리 이름이 검색어가 돼요. 브랜드 목록 없이도 넓게 둘러볼 때 좋아요.</p>
+    {category_picker()}
   </div>
 
   <div class="field" id="kw" style="display:none">
@@ -154,30 +210,40 @@ def form_body(msg: str = "") -> str:
     <textarea name="keywords" rows="3" placeholder="농심 라면&#10;오뚜기 라면"></textarea>
   </div>
 
-  <div class="grid2">
-    <div class="field">
-      <label>검색어당 최대 개수</label>
-      <p class="hint">검색어 하나에서 몇 개까지. 많을수록 오래 걸려요. (최대 1000)</p>
-      <input name="max" type="number" value="100" min="10" max="1000">
-    </div>
-    <div class="field">
-      <label>검색어 개수 제한 <span class="opt">(선택)</span></label>
-      <p class="hint">자동 생성 검색어를 위에서부터 잘라요. 비우면 전부. (테스트 5~10)</p>
-      <input name="limit" type="number" min="1" placeholder="전체">
+  <div class="prominent">
+    <label>한 검색어에서 몇 개나 모을까요?</label>
+    <p class="hint">이게 수집량을 좌우해요. 많을수록 더 많이 모으지만 더 오래 걸립니다. (최대 1,000)</p>
+    <div class="rangewrap">
+      <input type="range" name="max" min="10" max="1000" step="10" value="100"
+             oninput="document.getElementById('maxv').textContent=this.value">
+      <output id="maxv">100</output>
     </div>
   </div>
 
-  <div class="grid2">
-    <div class="field">
-      <label>눈덩이 확장 <span class="opt">(기본 0)</span></label>
-      <p class="hint">새로 발견된 브랜드를 다시 검색어로 넣어 더 넓게. 0=안 함, 1~2면 충분.</p>
-      <input name="snowball" type="number" value="0" min="0" max="5">
+  <div class="field" id="limitField">
+    <label>검색어 개수 제한 <span class="opt">(선택 · 테스트용)</span></label>
+    <p class="hint">'브랜드 목록 자동'은 브랜드×카테고리로 검색어가 <b>수십~수백 개</b> 만들어져요.
+      그게 부담되면 여기서 <b>위에서부터 N개</b>만 쓰도록 줄여요. 비우면 전부 사용.
+      예: <b>5</b> 로 두면 상위 5개 검색어만 돌려 빠르게 결과를 미리 봐요.</p>
+    <input name="limit" type="number" min="1" placeholder="전체 (비워두기)">
+  </div>
+
+  <div class="field">
+    <label>눈덩이 확장 <span class="opt">(선택)</span></label>
+    <p class="hint">모은 결과에서 <b>새로 발견된 브랜드</b>를 다시 검색어로 넣어 더 넓게. (눈사람 굴리듯 📈)</p>
+    <div class="seg" id="snowSeg">
+      <button type="button" class="on" data-v="0" onclick="pickSnow(this)">안 함</button>
+      <button type="button" data-v="1" onclick="pickSnow(this)">1회</button>
+      <button type="button" data-v="2" onclick="pickSnow(this)">2회</button>
+      <button type="button" data-v="3" onclick="pickSnow(this)">3회</button>
     </div>
-    <div class="field">
-      <label>저장 형식</label>
-      <p class="hint">CSV는 엑셀·구글시트에서 바로 열려요.</p>
-      <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
-    </div>
+    <input type="hidden" name="snowball" id="snowball" value="0">
+  </div>
+
+  <div class="field">
+    <label>저장 형식</label>
+    <p class="hint">CSV는 엑셀·구글시트에서 바로 열려요. XLSX는 엑셀 파일이에요.</p>
+    <select name="format"><option value="csv">CSV (엑셀에서 열림)</option><option value="xlsx">XLSX (엑셀 파일)</option></select>
   </div>
 
   <button id="go" class="submit" type="submit">수집 시작하기</button>
@@ -190,20 +256,29 @@ def form_body(msg: str = "") -> str:
   <div class="item"><b>① 상세</b><span>용량·가격·판매처까지 전부 담긴 원본 표.</span></div>
   <div class="item"><b>② 제품 시드 ⭐</b><span>중복을 정리한 깔끔한 제품 목록. 최종 DB에 바로 쓰는 파일이에요.</span></div>
   <div class="item"><b>③ 복합</b><span>여러 개 묶음·세트 상품을 따로 빼둔 표(나중에 손볼 용도).</span></div>
-  <div class="tip">💡 처음이면 <b>분야</b>만 고르고 <b>검색어 개수 제한 5</b>로 가볍게 한번 돌려보세요.</div>
+  <div class="tip">💡 처음이면 <b>검색어 개수 제한 5</b>로 가볍게 한번 돌려보세요.</div>
   <p class="hint" style="margin-top:16px">네이버 API 키(.env)가 설정돼 있어야 동작해요.</p>
 </aside>
 </div>
 
 <script>
 function pick(btn){{
-  document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('on'));
+  btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   var v=btn.dataset.v; document.getElementById('source').value=v;
-  document.getElementById('kw').style.display = v==='keywords' ? 'block':'none';
-  document.getElementById('srcHint').textContent = v==='keywords'
-    ? '원하는 검색어를 직접 입력해서 모아와요.'
-    : '준비된 브랜드 목록으로 검색어를 자동으로 만들어 한 번에 모아와요. (추천)';
+  document.getElementById('kw').style.display      = v==='keywords' ? 'block':'none';
+  document.getElementById('catBlock').style.display= v==='category' ? 'block':'none';
+  document.getElementById('limitField').style.display = v==='brands' ? 'block':'none';
+  var hints={{brands:'준비된 브랜드 목록으로 검색어를 자동으로 만들어 한 번에 모아와요. (추천)',
+    category:'네이버쇼핑 카테고리를 골라 그 이름으로 모아와요. 브랜드 없이 넓게.',
+    keywords:'원하는 검색어를 직접 입력해서 모아와요.'}};
+  document.getElementById('srcHint').textContent=hints[v];
+  if(v!=='brands'){{ var p=document.getElementById('profile');
+    if(p.querySelector('option[value=general]')) p.value='general'; }}
+}}
+function pickSnow(btn){{
+  btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on'); document.getElementById('snowball').value=btn.dataset.v;
 }}
 </script>
 """
@@ -282,18 +357,32 @@ class Handler(BaseHTTPRequestHandler):
 
         argv = [sys.executable, str(ROOT / "run.py"), "--profile", f("profile", "kfood"),
                 "--max", f("max", "100"), "--format", f("format", "csv")]
-        if f("source") == "keywords":
+        src = f("source")
+        snow = f("snowball")
+
+        def add_snow():
+            if snow and snow != "0":
+                argv.extend(["--snowball", snow])
+
+        if src == "keywords":
             kws = [k.strip() for k in re.split(r"[\n,]", f("keywords")) if k.strip()]
             if not kws:
                 self._send(page(form_body('<p class="err">키워드를 입력하세요.</p>')))
                 return
             argv += ["--keywords"] + kws
-        else:
+            add_snow()
+        elif src == "category":
+            cats = [c.strip() for c in form.get("cat", []) if c.strip()]
+            if not cats:
+                self._send(page(form_body('<p class="err">카테고리를 한 개 이상 선택하세요.</p>')))
+                return
+            argv += ["--keywords"] + cats
+            add_snow()
+        else:  # brands
             argv.append("--brands-csv")
             if f("limit"):
                 argv += ["--limit", f("limit")]
-            if f("snowball") and f("snowball") != "0":
-                argv += ["--snowball", f("snowball")]
+            add_snow()
 
         try:
             proc = subprocess.run(argv, cwd=str(ROOT), capture_output=True, text=True, timeout=1800)

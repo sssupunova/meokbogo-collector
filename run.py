@@ -72,6 +72,9 @@ def build_keywords(args, cfg):
 
     if args.brands_csv:
         csv_path = cfg["brands_csv"] if args.brands_csv == _BRANDS_CSV_FROM_PROFILE else args.brands_csv
+        if not csv_path:
+            sys.exit("이 분야('" + cfg["name"] + "')는 브랜드 목록이 없어요. "
+                     "'카테고리 선택' 또는 '직접 키워드'를 사용하세요.")
         type_filter = args.type or cfg["type_filter"]
         gen_mode = args.gen_mode or cfg["gen_mode"]
         try:
